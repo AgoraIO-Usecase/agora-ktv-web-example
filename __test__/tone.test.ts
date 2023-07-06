@@ -1,0 +1,35 @@
+import ToneCalculator from "../src/engine/ToneCalculator";
+import { assert, expect, test } from "vitest";
+
+test("calc tone score", () => {
+  const calculator = new ToneCalculator();
+  expect(calculator.calcScore(201, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(200, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(190, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(180, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(170, 100, 10, 0)).toBeCloseTo(8.135869643784943, 3);
+  expect(calculator.calcScore(160, 100, 10, 0)).toBeCloseTo(18.63140709316976, 3);
+  expect(calculator.calcScore(150, 100, 10, 0)).toBeCloseTo(29.804527, 3);
+  expect(calculator.calcScore(140, 100, 10, 0)).toBeCloseTo(41.74881, 3);
+  expect(calculator.calcScore(130, 100, 10, 0)).toBeCloseTo(54.578625, 3);
+  expect(calculator.calcScore(120, 100, 10, 0)).toBeCloseTo(68.43588, 3);
+  expect(calculator.calcScore(110, 100, 10, 0)).toBeCloseTo(83.49959, 3);
+  expect(calculator.calcScore(101, 100, 10, 0)).toBeCloseTo(98.27737, 3);
+  expect(calculator.calcScore(120, 100, 10, 0)).toBeCloseTo(68.43588, 3);
+  expect(calculator.calcScore(100, 100, 10, 0)).toBe(100);
+  expect(calculator.calcScore(99, 100, 10, 0)).toBeCloseTo(98.26005, 3);
+  expect(calculator.calcScore(80, 100, 10, 0)).toBeCloseTo(61.36865, 3);
+  expect(calculator.calcScore(70, 100, 10, 0)).toBeCloseTo(38.251263, 3);
+  expect(calculator.calcScore(60, 100, 10, 0)).toBeCloseTo(11.564189, 3);
+  expect(calculator.calcScore(59, 100, 10, 0)).toBeCloseTo(8.654488, 3);
+  expect(calculator.calcScore(58, 100, 10, 0)).toBeCloseTo(5.695045, 3);
+  expect(calculator.calcScore(57, 100, 10, 0)).toBeCloseTo(2.6841342, 3);
+  expect(calculator.calcScore(56, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(55, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(50, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(40, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(30, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(20, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(10, 100, 10, 0)).toBe(0);
+  expect(calculator.calcScore(1, 100, 10, 0)).toBe(0);
+});

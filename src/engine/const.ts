@@ -1,0 +1,9 @@
+export const SECOND_PX: number = 80; // 1s等于多少px
+export const MILLISECOND_PX: number = SECOND_PX / 1000; // 1ms等于多少px
+export const LINE_VIEW_HEIGHT: number = 60; // line view 高度 px
+export const LINE_VIEW_WIDTH: number = 375; // line view 宽度 px
+export const CURSOR_AREA_WIDTH: number = 100; // 游标左侧区域宽度 px
+export const INTERVAL_TIME: number = 20; // 绘制间隔时间
+export const FULL_MARK: number = 100; // 满分
+export const HIT_SCORE_THRESHOLD: number = 0.7; // 打分偏差
+export const COLORING_REACT_TIME = 0.05; // 高亮小块时间 s

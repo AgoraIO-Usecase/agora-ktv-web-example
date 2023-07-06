@@ -1,0 +1,17 @@
+{
+  "name": "agora-extension-pitch-detector",
+  "version": "0.0.0",
+  "description": "Agora Pitch Detector for Agora Web SDK",
+  "keywords": ["agora", "audio", "vad", "voice", "pitch"],
+  "main": "index.umd.js",
+  "module": "index.es.js",
+  "types": "index.d.ts",
+  "author": "agora",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "devDependencies": {
+    "agora-rte-extension": "^1.2.3"
+  },
+  "peerDependencies": {
+    "agora-rtc-sdk-ng": ">=4.10.0"
+  }
+}
