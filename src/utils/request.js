@@ -1,7 +1,7 @@
 // http request
 import axios from "axios";
 
-let { VITE_AGORA_AUTHORIZATION } = import.meta.env;
+let { VITE_AGORA_AUTHORIZATION, VITE_AGORA_APP_ID } = import.meta.env;
 const DEFAULT_REQUEST_ID = "4135901d9c8b4f0cb09fbb51fd7508dd";
 const Authorization = `Basic ${VITE_AGORA_AUTHORIZATION}`;
 const songMap = new Map();
@@ -84,7 +84,7 @@ export async function apiStartConfluence(channel) {
                 [{
                   "rtc": {
                     "rtcUid": 0,
-                    "rtcToken": "4f75dc64d39b49858cecd499800fa9b1",
+                    "rtcToken": VITE_AGORA_APP_ID,
                     "rtcChannel": channel
                   }
                 }], "idleTimeout": 30,
@@ -96,7 +96,7 @@ export async function apiStartConfluence(channel) {
                 },
                 "rtc": {
                   "rtcUid": 9527,
-                  "rtcToken": "4f75dc64d39b49858cecd499800fa9b1",
+                  "rtcToken": VITE_AGORA_APP_ID,
                   "rtcChannel": channel + "_ad"
                 }
               }]
@@ -120,7 +120,7 @@ export async function apiStopConfluence() {
   if (!token || !taskId) {
     return
   }
-  
+
   try {
     const url = `${prefix}/v1/projects/${appId}/rtsc/cloud-transcoder/tasks/${taskId}?builderToken=${token}`
     const res = await fetch(url, {
