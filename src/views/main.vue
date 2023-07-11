@@ -28,8 +28,8 @@
     </section>
     <!-- 音乐选歌 -->
     <div v-if="drawer">
-      <MusicTable :time="0" :list="musicList" :songCode="nowMusic.songCode" :orderMusic="orderMusic" @goOrder="goOrder"
-        @close="drawer = false"></MusicTable>
+      <MusicTable :canOrder="canOrder" :list="musicList" :songCode="nowMusic.songCode" :orderMusic="orderMusic"
+        @goOrder="goOrder" @close="drawer = false"></MusicTable>
     </div>
     <!-- for test -->
     <TestView :data="testData" @skipPrelude="skipPrelude"></TestView>
@@ -82,7 +82,7 @@ const ENMU_BGM_STATUS = {
   PAUSE: 2
 }
 let songIndex = 1;
-let effect_id = []
+let intervalIds = []
 const BGM_PUBLISH_UID = 9528
 
 const genMsg = (data) => {
@@ -104,6 +104,7 @@ export default {
     return {
       channel: this.$route.query.channel,
       drawer: false,
+      canOrder: false,
       musicList: getMusicList(),
       nowMusic: {},
       orderMusic: [],
@@ -144,7 +145,8 @@ export default {
         AEC: false
       });
       await this.hostJoinRtc()
-      await this.handleHostRtcEvents()
+      this.intervalCanOrder()
+      this.handleHostRtcEvents()
       if (this.localTracks.audioTrack) {
         await this.client1.publish(this.localTracks.audioTrack)
       }
@@ -186,8 +188,8 @@ export default {
     this.status = ENMU_BGM_STATUS.IDLE
     engine.destory();
     sessionStorage.removeItem("token");
-    effect_id.forEach(item => clearInterval(item))
-    effect_id = []
+    intervalIds.forEach(item => clearInterval(item))
+    intervalIds = []
     await this.leaveRtc();
   },
   watch: {
@@ -212,6 +214,26 @@ export default {
       this.volume = val
       this.accompaniedTrack?.setVolume(this.volume);
       this.accompaniedDelayTrack?.setVolume(this.volume);
+    },
+    intervalCanOrder() {
+      let startTime = Date.now()
+      let id = setInterval(() => {
+        if (this.canOrder) {
+          clearInterval(id)
+          return
+        }
+        const ms = this.client1.getNtpWallTimeInMs()
+        const now = Date.now()
+        const ntpOffset = ms - now
+        if (ntpOffset != 0) {
+          this.canOrder = true
+          this.$message.success("可以点歌了");
+          let endTime = Date.now()
+          console.log(`[demo] canOrder: ${endTime - startTime} ms`,)
+        }
+      }, 300)
+
+      intervalIds.push(id)
     },
     async hostJoinRtc() {
       this.client1 = AgoraRTC.createClient({
@@ -322,7 +344,7 @@ export default {
           }))
         }
       }, 200)
-      effect_id.push(id)
+      intervalIds.push(id)
     },
     startScoreStreamMessage() {
       let id = setInterval(() => {
@@ -341,7 +363,7 @@ export default {
           }))
         }
       }, 3000)
-      effect_id.push(id)
+      intervalIds.push(id)
     },
     calcInfo() {
       const isSelect = this.$route.query.isSelect
@@ -369,7 +391,7 @@ export default {
           engine.setTime(this.currentTime);
         }
       }, PROGRESS_INTERVAL_TIME);
-      effect_id.push(timer)
+      intervalIds.push(timer)
     },
     async playBgm() {
       this.status = ENMU_BGM_STATUS.PLAYING

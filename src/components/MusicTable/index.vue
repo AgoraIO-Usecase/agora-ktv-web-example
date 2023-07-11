@@ -9,7 +9,7 @@
             <div>{{ item.name }}</div>
             <div>{{ item.singer }}</div>
           </div>
-          <el-button v-if="!item.select" class="noselect" @click="goOrder(item)" :disabled="disabled">
+          <el-button v-if="!item.select" class="noselect" @click="goOrder(item)" :disabled="!canOrder">
             <span class="order-text">点歌</span>
           </el-button>
           <div v-else class="select">已点</div>
@@ -31,8 +31,6 @@
 <script>
 
 
-let timer = null
-let DISABLED = true
 
 export default {
   props: {
@@ -48,25 +46,19 @@ export default {
       type: Array,
       default: () => [],
     },
-    time: {
-      type: Number,
-      default: 30
+    canOrder: {
+      type: Boolean,
+      default: false
     }
   },
   components: {},
   data() {
-    return {
-      disabled: DISABLED
-    };
+    return {}
   },
   mounted() {
-    setTimeout(() => {
-      this.disabled = false
-    }, this.time * 1000);
+
   },
   beforeDestroy() {
-    DISABLED = false
-    clearTimeout(timer)
   },
   methods: {
     close() {
