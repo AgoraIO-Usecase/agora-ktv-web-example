@@ -204,8 +204,7 @@ export default {
   },
   methods: {
     setParameter() {
-      AgoraRTC.setParameter("che.audio.max_mixed_participants", 8);
-      AgoraRTC.setParameter("GATEWAY_ADDRESS", [{ "ip": "120.195.180.30", "port": 16000 }])
+      AgoraRTC.setParameter("GATEWAY_ADDRESS", [{ "ip": "120.195.180.30", "port": 16000 }]) // 仅测试环境需要
       AgoraRTC.setParameter("USE_XR", true)	// 开启 xr
       AgoraRTC.setParameter("ENABLE_NTP_REPORT", true)
       AgoraRTC.setParameter("NTP_DEFAULT_FIXED_OFFSET", window.ntpOffset);
@@ -333,13 +332,13 @@ export default {
         if (this.chorused) {
           this.client1.sendStreamMessage(genMsg({
             service: "audio_smart_mixer_status",
-            version: "V1",
+            version: "V1",  // 协议版本号
             payload: {
-              Ts: this.client1.getNtpWallTimeInMs(),
-              cname: this.channel,
-              status: this.status,
-              bgmUID: BGM_PUBLISH_UID + "",
-              leadsingerUID: this.uid + ""
+              Ts: this.client1.getNtpWallTimeInMs(), // NTP 时间
+              cname: this.channel, // 频道名
+              status: this.status, // （-1： unknown，0：非K歌状态，1：K歌播放状态，2：K歌暂停状态）
+              bgmUID: BGM_PUBLISH_UID + "", // BGM 流 UID
+              leadsingerUID: this.uid + ""// 主唱Uid
             }
           }))
         }
@@ -351,14 +350,14 @@ export default {
         if (this.status !== ENMU_BGM_STATUS.IDLE && this.status !== ENMU_BGM_STATUS.PAUSE) {
           this.client1.sendStreamMessage(genMsg({
             service: "audio_smart_mixer",
-            version: "V1",
+            version: "V1", // 协议版本号
             payload: {
-              cname: this.channel,
-              uid: this.uid + "",
-              uLv: -1,
-              specialLabel: 0,
-              audioRoute: 3,
-              vocalScore: this.vocalScore
+              cname: this.channel, // 频道名
+              uid: this.uid + "", // 自己的uid，主频道
+              uLv: -1, // user-leve1（用户级别，若无则为 -1，Level 越高，越重要）
+              specialLabel: 0,  //0: default-mode ，1：这个用户需要被排除出智能混音
+              audioRoute: 3,  // 音频路由：监听 onAudioRouteChanged
+              vocalScore: this.vocalScore// 单句打分
             }
           }))
         }
@@ -745,6 +744,7 @@ export default {
         await this.client2.unpublish(this.accompaniedTrack);
       }
       this.chorused = false
+
     },
   }
 }
