@@ -22,6 +22,9 @@
       publish delay:(ms) <el-input v-model="publishDelay" placeholder="publish delay"></el-input>
     </div>
     <div class="item">
+      render delay:(ms) （只针对观众端）<el-input :style="{width:'100px'}" v-model="renderDelay" placeholder="publish delay"></el-input>
+    </div>
+    <div class="item">
       appId: <el-select v-model="value" placeholder="请选择一个appId">
         <el-option v-for="item in options" :key="item.label" :label="item.label" :value="item.value">
         </el-option>
@@ -42,8 +45,9 @@ export default {
       channel: "",
       isSelect: "1",
       ntpOffset: 80,
-      audioDeviceDelay: 50,
-      publishDelay: 300,
+      audioDeviceDelay: -190,
+      publishDelay: 110,
+      renderDelay:0,
       options: [
         {
           value: APP_INFO[0].appId,
@@ -84,6 +88,12 @@ export default {
         window.publishDelay = Number(newVal)
       },
       immediate: true
+    },
+    renderDelay:{
+      handler(newVal) {
+        window.renderDelay = Number(newVal)
+      },
+      immediate: true
     }
   },
   methods: {
@@ -106,7 +116,6 @@ export default {
 <style lang="scss" scoped>
 .login {
   width: 375px;
-  height: 750px;
   overflow: auto;
   overflow-x: hidden;
   margin: 0 auto;
@@ -140,11 +149,11 @@ export default {
   }
 
   .channel {
-    margin-top: 50px !important;
+    margin-top: 10px !important;
   }
 
   .item {
-    margin-top: 10px;
+    margin-top: 20px;
     text-align: left;
     color: white;
 
@@ -161,7 +170,7 @@ export default {
 
   .start {
     text-align: center;
-    margin-top: 50px;
+    margin-top: 20px;
   }
 }
 </style>

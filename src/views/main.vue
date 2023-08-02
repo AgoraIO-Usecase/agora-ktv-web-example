@@ -59,6 +59,7 @@ let { MODE = "" } = import.meta.env;
 const assetsPath = MODE == "development" ? "/" : PREFIX;
 let appId = window?.appInfo?.appId
 let token = null
+let intervalId = null
 const engine = Engine.getInstance();
 const extension = new PitchDetectorExtension({ assetsPath });
 AgoraRTC.registerExtensions([extension]);
@@ -132,7 +133,6 @@ export default {
       vocalScore: 0,
       volume: 50,
       status: ENMU_BGM_STATUS.IDLE,
-      flag: false,
       chorused: false // 是否开启合唱 （伴唱用）
     };
   },
@@ -151,6 +151,7 @@ export default {
         await this.client1.publish(this.localTracks.audioTrack)
       }
       if (window.appInfo.type != 'test') {
+        await this.startConfluenceService()
         await this.startChorus()
         this.startPitchExtension();
         this.startConfluenceStreamMessage()
@@ -171,11 +172,13 @@ export default {
         this.startScoreStreamMessage()
         this.subscribeEngineEvents();
         this.startLyricTimer();
-        this.handleStreamMsg()
+        this.handleStreamMsg(this.client1)
       }
     } else {
-      await this.audienceJoinRtc()
       // 观众
+      await this.audienceJoinRtc()
+      this.handleStreamMsg(this.audienceClient)
+      this.subscribeEngineEvents();
       this.handleAudienceRtcEvents()
     }
   },
@@ -191,11 +194,18 @@ export default {
     intervalIds.forEach(item => clearInterval(item))
     intervalIds = []
     await this.leaveRtc();
+    if (intervalId) {
+      clearInterval(intervalId)
+      intervalId = null
+    }
   },
   watch: {
     currentTime(val) {
       this.testData.currentTime = val
-    }
+    },
+    // currentLine(val) {
+    //   console.log("currentLine", val)
+    // }
   },
   computed: {
     toggleImgSrc() {
@@ -231,7 +241,6 @@ export default {
           console.log(`[demo] canOrder: ${endTime - startTime} ms`,)
         }
       }, 300)
-
       intervalIds.push(id)
     },
     async hostJoinRtc() {
@@ -330,17 +339,20 @@ export default {
     startConfluenceStreamMessage() {
       let id = setInterval(() => {
         if (this.chorused) {
-          this.client1.sendStreamMessage(genMsg({
-            service: "audio_smart_mixer_status",
-            version: "V1",  // 协议版本号
-            payload: {
-              Ts: this.client1.getNtpWallTimeInMs(), // NTP 时间
-              cname: this.channel, // 频道名
-              status: this.status, // （-1： unknown，0：非K歌状态，1：K歌播放状态，2：K歌暂停状态）
-              bgmUID: BGM_PUBLISH_UID + "", // BGM 流 UID
-              leadsingerUID: this.uid + ""// 主唱Uid
-            }
-          }))
+          this.client1.sendStreamMessage({
+            payload: genMsg({
+              service: "audio_smart_mixer_status",
+              version: "V1",  // 协议版本号
+              payload: {
+                Ts: this.client1.getNtpWallTimeInMs(), // NTP 时间
+                cname: this.channel, // 频道名
+                status: this.status, // （-1： unknown，0：非K歌状态，1：K歌播放状态，2：K歌暂停状态）
+                bgmUID: BGM_PUBLISH_UID + "", // BGM 流 UID
+                leadsingerUID: this.uid + ""// 主唱Uid
+              },
+            }),
+            syncWithAudio: true,
+          })
         }
       }, 200)
       intervalIds.push(id)
@@ -348,18 +360,21 @@ export default {
     startScoreStreamMessage() {
       let id = setInterval(() => {
         if (this.status !== ENMU_BGM_STATUS.IDLE && this.status !== ENMU_BGM_STATUS.PAUSE) {
-          this.client1.sendStreamMessage(genMsg({
-            service: "audio_smart_mixer",
-            version: "V1", // 协议版本号
-            payload: {
-              cname: this.channel, // 频道名
-              uid: this.uid + "", // 自己的uid，主频道
-              uLv: -1, // user-leve1（用户级别，若无则为 -1，Level 越高，越重要）
-              specialLabel: 0,  //0: default-mode ，1：这个用户需要被排除出智能混音
-              audioRoute: 3,  // 音频路由：监听 onAudioRouteChanged
-              vocalScore: this.vocalScore// 单句打分
-            }
-          }))
+          this.client1.sendStreamMessage({
+            payload: genMsg({
+              service: "audio_smart_mixer",
+              version: "V1", // 协议版本号
+              payload: {
+                cname: this.channel, // 频道名
+                uid: this.uid + "", // 自己的uid，主频道
+                uLv: -1, // user-leve1（用户级别，若无则为 -1，Level 越高，越重要）
+                specialLabel: 0,  //0: default-mode ，1：这个用户需要被排除出智能混音
+                audioRoute: 3,  // 音频路由：监听 onAudioRouteChanged
+                vocalScore: this.vocalScore// 单句打分
+              },
+            }),
+            syncWithAudio: true,
+          })
         }
       }, 3000)
       intervalIds.push(id)
@@ -399,24 +414,29 @@ export default {
       if (this.role == 'host') {
         this?.accompaniedDelayTrack?.startProcessAudioBuffer()
         await this.client2?.publish(this?.accompaniedDelayTrack);
-        if (!this.flag) {
-          this.flag = true
-          await this.startConfluenceService()
-        }
-        this.client1.sendStreamMessage(genMsg({
-          type: 4,
-          ntp: this.client1.getNtpWallTimeInMs(),
-          songCode: this.nowMusic.songCode,
-          status: this.status,
-          position: 0
-        }));
+        this.client1.sendStreamMessage({
+          payload: genMsg({
+            type: 4,
+            ntp: this.client1.getNtpWallTimeInMs(),
+            songCode: this.nowMusic.songCode,
+            status: this.status,
+            position: 0,
+            realPosition: 0,
+            forward: true
+          }),
+          syncWithAudio: true
+        })
       } else if (this.role == "accompaniment") {
         this.seekBGMProgress(this.currentTime)
       }
     },
     async createBgmAudioTracks() {
+      if (this.role == "audience") {
+        return
+      }
       var audioContext = new AudioContext();
-      const res = await fetch(this.nowMusic.accompanyUrl)
+      // const res = await fetch(this.nowMusic.accompanyUrl)
+      const res = await fetch(this.nowMusic.playUrl)
       const arrayBuffer = await res.arrayBuffer()
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
       const delayAudioBuffer = genDelayAudioBuffer(audioBuffer, window.publishDelay)
@@ -501,13 +521,18 @@ export default {
       engine.on("timeUpdate", (data) => {
         const { progress } = data
         if (this.joinedRtc && this.role == 'host' && this.status != ENMU_BGM_STATUS.PAUSE) {
-          this.client1.sendStreamMessage(genMsg({
-            type: 4,
-            ntp: this.client1.getNtpWallTimeInMs(),
-            songCode: this.nowMusic.songCode,
-            status: this.status,
-            position: parseInt(progress * 1000 - window.audioDeviceDelay)
-          }));
+          this.client1.sendStreamMessage({
+            payload: genMsg({
+              type: 4,
+              ntp: this.client1.getNtpWallTimeInMs(),
+              songCode: this.nowMusic.songCode,
+              status: this.status,
+              position: parseInt(progress * 1000 - window.audioDeviceDelay),
+              realPosition: parseInt(progress * 1000) - window.publishDelay,
+              forward: true,
+            }),
+            syncWithAudio: true,
+          });
         }
       });
       engine.on("lineEnd", async (data) => {
@@ -525,13 +550,18 @@ export default {
           // 最后一句 （状态改为结束）
           this.status = ENMU_BGM_STATUS.IDLE
           if (this.role == 'host') {
-            this.client1.sendStreamMessage(genMsg({
-              type: 4,
-              ntp: this.client1.getNtpWallTimeInMs(),
-              songCode: this.nowMusic.songCode,
-              status: this.status,
-              position: -1
-            }));
+            this.client1.sendStreamMessage({
+              payload: genMsg({
+                type: 4,
+                ntp: this.client1.getNtpWallTimeInMs(),
+                songCode: this.nowMusic.songCode,
+                status: this.status,
+                position: -1,
+                realPosition: -1,
+                forward: true,
+              }),
+              syncWithAudio: true,
+            });
           }
         }
       });
@@ -596,13 +626,16 @@ export default {
           i.select = true;
         }
       });
-      this.client1.sendStreamMessage(
-        genMsg({
+      this.client1.sendStreamMessage({
+        payload: genMsg({
           type: EnumMessage.order,
           songCode: Number(songCode),
           songIndex: songIndex,
-        })
-      );
+          forward: true,
+
+        }),
+        syncWithAudio: true,
+      });
       songIndex++;
       await this.getSongDetail(songCode);
       this.loading = false;
@@ -629,13 +662,18 @@ export default {
       this.accompaniedTrack?.pauseProcessAudioBuffer();
       this.accompaniedDelayTrack?.pauseProcessAudioBuffer();
       if (this.role == 'host') {
-        this.client1.sendStreamMessage(genMsg({
-          type: 4,
-          ntp: this.client1.getNtpWallTimeInMs(),
-          songCode: this.nowMusic.songCode,
-          status: this.status,
-          position: -1
-        }));
+        this.client1.sendStreamMessage({
+          payload: genMsg({
+            type: 4,
+            ntp: this.client1.getNtpWallTimeInMs(),
+            songCode: this.nowMusic.songCode,
+            status: this.status,
+            position: -1,
+            realPosition: -1,
+            forward: true,
+          }),
+          syncWithAudio: true,
+        })
       }
     },
     // 继续播放
@@ -673,10 +711,10 @@ export default {
       this.totalScore = engine.totalScore;
     },
     // 处理stream msg (伴唱)
-    handleStreamMsg() {
-      this.client1.on("stream-message", (uid, data) => {
+    handleStreamMsg(client) {
+      client.on("stream-message", (uid, data) => {
         data = JSON.parse(Uint8ArrayToString(data))
-        const { type, songCode, status, position = 0, ntp } = data
+        let { type, songCode, status, position = 0, realPosition = 0, ntp } = data
         if (!type) {
           return
         }
@@ -694,11 +732,26 @@ export default {
             newTime = newTime > 0 ? newTime : 0
             if (this.status == ENMU_BGM_STATUS.IDLE) {
               // 未开始时记录远端主唱进度
-              this.currentTime = newTime
+              if (this.role == "audience") {
+                // 观众 使用 realPosition
+                realPosition = realPosition / 1000
+                realPosition = realPosition > 0 ? realPosition : 0
+                this.currentTime = realPosition - (window.renderDelay / 1000)
+                engine.setTime(this.currentTime);
+                if (intervalId) {
+                  clearInterval(intervalId)
+                }
+                intervalId = setInterval(() => {
+                  this.currentTime += 0.02
+                  engine.setTime(this.currentTime);
+                }, 20)
+              } else {
+                this.currentTime = newTime
+              }
             } else {
               let localPosition = 0  // 需要ms
               localPosition = this.accompaniedTrack?.getCurrentTime() * 1000
-              const localNtpTime = this.client1.getNtpWallTimeInMs()
+              const localNtpTime = this.client1?.getNtpWallTimeInMs() || this.audienceClient?.getNtpWallTimeInMs()
               const remoteNtpTime = ntp
               const remotePosition = position
               let exportPosition = localNtpTime - remoteNtpTime + remotePosition + window.audioDeviceDelay

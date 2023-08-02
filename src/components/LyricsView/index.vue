@@ -13,7 +13,7 @@
             v-for="(tone, j) in item.tones"
             :key="j + 's'"
             class="word"
-            :class="tone.beginTime <= currentTime - 0.15 ? 'light' : 'white'"
+            :class="tone.beginTime <= currentTime? 'light' : 'white'"
           >
             {{ tone.word }}
           </div>

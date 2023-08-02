@@ -80,17 +80,15 @@ export async function apiStartConfluence(channel) {
           serviceType: "cloudTranscoderV2",
           config: {
             "transcoder": {
-              "audioInputs":
-                [{
-                  "rtc": {
-                    "rtcUid": 0,
-                    "rtcToken": VITE_AGORA_APP_ID,
-                    "rtcChannel": channel
-                  }
-                }], "idleTimeout": 30,
+              "audioInputs": [{
+                "rtc": {
+                  "rtcUid": 0,
+                  "rtcToken": VITE_AGORA_APP_ID,
+                  "rtcChannel": channel
+                }
+              }], "idleTimeout": 30,
               "outputs": [{
-                "audioOption":
-                {
+                "audioOption": {
                   "profileType": "AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO",
                   "fullChannelMixer": "native-mixer-weighted"
                 },
@@ -98,6 +96,12 @@ export async function apiStartConfluence(channel) {
                   "rtcUid": 9527,
                   "rtcToken": VITE_AGORA_APP_ID,
                   "rtcChannel": channel + "_ad"
+                },
+                "dataStreamOption": {
+                  "source": {
+                    "dataStream": true,
+                  },
+                  "sink": {}
                 }
               }]
             }
