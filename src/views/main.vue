@@ -137,8 +137,8 @@ export default {
     };
   },
   async created() {
-    this.setParameter()
     this.calcInfo()
+    this.setParameter()
     if (this.role == 'host') {
       // 主唱 
       this.localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
@@ -218,6 +218,12 @@ export default {
       AgoraRTC.setParameter("USE_XR", true)	// 开启 xr
       AgoraRTC.setParameter("ENABLE_NTP_REPORT", true)
       AgoraRTC.setParameter("NTP_DEFAULT_FIXED_OFFSET", window.ntpOffset);
+      if (this.role == 'host') {
+        AgoraRTC.setParameter("ENABLE_PUBLISH_AUDIO_FILTER", false)
+        AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", 3)
+      } else {
+        AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", 2)
+      }
     },
     updateVolume(val) {
       this.volume = val
@@ -465,12 +471,6 @@ export default {
           this.localTracks[trackName] = null;
         }
       }
-      // if (this.originalTrack) {
-      //   this.originalTrack.stopProcessAudioBuffer();
-      //   this.originalTrack.stop();
-      //   this.originalTrack.close();
-      //   this.originalTrack = null;
-      // }
       if (this.accompaniedTrack) {
         this.accompaniedTrack.stopProcessAudioBuffer();
         this.accompaniedTrack.stop();
@@ -702,7 +702,6 @@ export default {
       if (!this.originalTrack && !this.accompaniedTrack) {
         return;
       }
-      // this.originalTrack.seekAudioBuffer(time);
       this.accompaniedTrack.seekAudioBuffer(time);
     },
     async handleLyc() {

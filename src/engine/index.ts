@@ -375,8 +375,7 @@ export default class Engine {
 
   // 处理时间
   private _dealTime() {
-    // 20 ms 一次，50次一秒
-    if (this.currentTime && this._timer++ % 50 == 0) {
+    if (this.currentTime && this._timer++ % 5 == 0) {
       let score = 0;
       if (this.lineIndex >= 0) {
         if (this.lyric?.lines) {
@@ -385,6 +384,7 @@ export default class Engine {
           score = 0;
         }
       }
+      // 100ms 抛出一次事件
       this._emitter.emit("timeUpdate", {
         progress: this.currentTime,
         lineIndex: this.lineIndex,
