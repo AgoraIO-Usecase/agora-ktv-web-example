@@ -709,7 +709,7 @@ export default {
       this.lyric = await engine.setLyric(resZip);
       this.totalScore = engine.totalScore;
     },
-    // 处理stream msg (伴唱)
+    // 处理stream msg (伴唱/观众)
     handleStreamMsg(client) {
       client.on("stream-message", (uid, data) => {
         data = JSON.parse(Uint8ArrayToString(data))
