@@ -74,133 +74,8 @@ export default class Engine {
     };
   }
 
-  // ------------------  private  ------------------
-  private _pitchToY(pitch: number) {
-    if (pitch < this.pitchMin) {
-      pitch = this.pitchMin;
-    }
-    if (pitch > this.pitchMax) {
-      pitch = this.pitchMax;
-    }
-    return ((pitch - this.pitchMin) / this.pitchHeight) * LINE_VIEW_HEIGHT;
-  }
-
-  private _calcReactInfo() {
-    let reactInfo = [];
-    for (let line of this.lyric.lines) {
-      for (let tone of line.tones) {
-        reactInfo.push({
-          // word: tone.word,
-          // CURSOR_AREA_WIDTH 游标区域偏移
-          x: tone.beginTime * SECOND_PX + CURSOR_AREA_WIDTH,
-          y: this._pitchToY(tone.pitch),
-          width: tone.duration * SECOND_PX,
-          word: tone.word,
-        });
-      }
-    }
-    this.reactInfo = reactInfo;
-  }
-
-  private _addNewColoringReactInfo(hit: LyricToneModel) {
-    const { beginTime, duration } = hit;
-    const hitStartTime = beginTime;
-    const hitEndTime = hitStartTime + duration;
-    let startTime = this.currentTime;
-    let endTime = startTime + COLORING_REACT_TIME;
-    if (endTime > hitEndTime) {
-      // 不能超过tone词结束时间
-      endTime = hitEndTime;
-    }
-    let react = {
-      // CURSOR_AREA_WIDTH 游标区域偏移
-      x: startTime * SECOND_PX + CURSOR_AREA_WIDTH,
-      y: this._pitchToY(hit.pitch),
-      width: (endTime - startTime) * SECOND_PX,
-    };
-    let last = this.coloringReactInfo[this.coloringReactInfo.length - 1];
-    // 当前react和上一个react在同一个tone词中 且
-
-    if (last && isClosedReact(last, react) && isReactInTone(last, hit)) {
-      last = this.coloringReactInfo.pop()!;
-      react.width = react.x + react.width - last.x;
-      react.x = last.x;
-    }
-
-    this.coloringReactInfo.push(react);
-  }
-
-  // 处理react小块
-  private _dealReact() {
-    const startX = this.currentTime * SECOND_PX;
-    const cursorX = startX + CURSOR_AREA_WIDTH;
-    const endX = startX + LINE_VIEW_WIDTH;
-    // 过滤小块 (当前屏幕) (需要考虑到截断)
-    let filterReactInfo = filterReact(this.reactInfo, startX, endX);
-    // 截断处理
-    filterReactInfo = cutOffReact(filterReactInfo, startX, endX);
-    // 过滤高亮小块 (当前屏幕) (需要考虑到截断)
-    let filterColoringReactInfo = filterReact(this.coloringReactInfo, startX, cursorX);
-    // 截断处理
-    filterColoringReactInfo = cutOffReact(filterColoringReactInfo, startX, cursorX);
-    // 抛出事件
-    this.emit("draw", {
-      filterReactInfo,
-      filterColoringReactInfo,
-    });
-  }
-
-  // 计算句子
-  private _dealLine() {
-    if (!this.lyric?.lines) {
-      return;
-    }
-    let len = this.lyric.lines.length;
-    for (let i = 0; i < len; i++) {
-      const line = this.lyric.lines[i];
-      const { beginTime, duration } = line;
-      const endTime = beginTime + duration;
-      if (this.currentTime >= endTime) {
-        if (i > this.lineIndex) {
-          // line change
-          this.lineIndex = i;
-          const score = getLineScore(line);
-          line.score = score;
-          this.cumulativeScore += score;
-          const combo = this.getLineCombo(this.lineIndex);
-          this.emit("lineEnd", {
-            line: this.lineIndex,
-            score,
-            combo,
-          });
-          if (this.lineIndex == len - 1) {
-            this.cumulativeScore = 0;
-          }
-          break;
-        }
-      }
-    }
-  }
-
-  // 处理时间
-  private _dealTime() {
-    // 20 ms 一次，50次一秒
-    if (this.currentTime && this._timer++ % 50 == 0) {
-      let score = 0;
-      if (this.lineIndex >= 0) {
-        if (this.lyric?.lines) {
-          score = this.lyric?.lines[this.lineIndex]?.score || 0;
-        } else {
-          score = 0;
-        }
-      }
-      this._emitter.emit("timeUpdate", {
-        progress: this.currentTime,
-        lineIndex: this.lineIndex,
-        cumulativeScore: this.cumulativeScore,
-        score: score,
-      });
-    }
+  get totalTime() {
+    return this.lyric?.duration || 0
   }
 
   // ------------------  public  ------------------
@@ -389,4 +264,135 @@ export default class Engine {
   emit<Key extends keyof EngineEvents>(name: Key, data: EngineEvents[Key]) {
     this._emitter.emit<typeof name>(name, data);
   }
+
+  // ------------------  private  ------------------
+  private _pitchToY(pitch: number) {
+    if (pitch < this.pitchMin) {
+      pitch = this.pitchMin;
+    }
+    if (pitch > this.pitchMax) {
+      pitch = this.pitchMax;
+    }
+    return ((pitch - this.pitchMin) / this.pitchHeight) * LINE_VIEW_HEIGHT;
+  }
+
+  private _calcReactInfo() {
+    let reactInfo = [];
+    for (let line of this.lyric.lines) {
+      for (let tone of line.tones) {
+        reactInfo.push({
+          // word: tone.word,
+          // CURSOR_AREA_WIDTH 游标区域偏移
+          x: tone.beginTime * SECOND_PX + CURSOR_AREA_WIDTH,
+          y: this._pitchToY(tone.pitch),
+          width: tone.duration * SECOND_PX,
+          word: tone.word,
+        });
+      }
+    }
+    this.reactInfo = reactInfo;
+  }
+
+  private _addNewColoringReactInfo(hit: LyricToneModel) {
+    const { beginTime, duration } = hit;
+    const hitStartTime = beginTime;
+    const hitEndTime = hitStartTime + duration;
+    let startTime = this.currentTime;
+    let endTime = startTime + COLORING_REACT_TIME;
+    if (endTime > hitEndTime) {
+      // 不能超过tone词结束时间
+      endTime = hitEndTime;
+    }
+    let react = {
+      // CURSOR_AREA_WIDTH 游标区域偏移
+      x: startTime * SECOND_PX + CURSOR_AREA_WIDTH,
+      y: this._pitchToY(hit.pitch),
+      width: (endTime - startTime) * SECOND_PX,
+    };
+    let last = this.coloringReactInfo[this.coloringReactInfo.length - 1];
+    // 当前react和上一个react在同一个tone词中 且
+
+    if (last && isClosedReact(last, react) && isReactInTone(last, hit)) {
+      last = this.coloringReactInfo.pop()!;
+      react.width = react.x + react.width - last.x;
+      react.x = last.x;
+    }
+
+    this.coloringReactInfo.push(react);
+  }
+
+  // 处理react小块
+  private _dealReact() {
+    const startX = this.currentTime * SECOND_PX;
+    const cursorX = startX + CURSOR_AREA_WIDTH;
+    const endX = startX + LINE_VIEW_WIDTH;
+    // 过滤小块 (当前屏幕) (需要考虑到截断)
+    let filterReactInfo = filterReact(this.reactInfo, startX, endX);
+    // 截断处理
+    filterReactInfo = cutOffReact(filterReactInfo, startX, endX);
+    // 过滤高亮小块 (当前屏幕) (需要考虑到截断)
+    let filterColoringReactInfo = filterReact(this.coloringReactInfo, startX, cursorX);
+    // 截断处理
+    filterColoringReactInfo = cutOffReact(filterColoringReactInfo, startX, cursorX);
+    // 抛出事件
+    this.emit("draw", {
+      filterReactInfo,
+      filterColoringReactInfo,
+    });
+  }
+
+  // 计算句子
+  private _dealLine() {
+    if (!this.lyric?.lines) {
+      return;
+    }
+    let len = this.lyric.lines.length;
+    for (let i = 0; i < len; i++) {
+      const line = this.lyric.lines[i];
+      const { beginTime, duration } = line;
+      const endTime = beginTime + duration;
+      if (this.currentTime >= endTime) {
+        if (i > this.lineIndex) {
+          // line change
+          this.lineIndex = i;
+          const score = getLineScore(line);
+          line.score = score;
+          this.cumulativeScore += score;
+          const combo = this.getLineCombo(this.lineIndex);
+          this.emit("lineEnd", {
+            line: this.lineIndex,
+            score,
+            combo,
+          });
+          if (this.lineIndex == len - 1) {
+            this.cumulativeScore = 0;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // 处理时间
+  private _dealTime() {
+    // 20 ms 一次，50次一秒
+    if (this.currentTime && this._timer++ % 50 == 0) {
+      let score = 0;
+      if (this.lineIndex >= 0) {
+        if (this.lyric?.lines) {
+          score = this.lyric?.lines[this.lineIndex]?.score || 0;
+        } else {
+          score = 0;
+        }
+      }
+      this._emitter.emit("timeUpdate", {
+        progress: this.currentTime,
+        lineIndex: this.lineIndex,
+        cumulativeScore: this.cumulativeScore,
+        score: score,
+      });
+    }
+  }
+
+
 }

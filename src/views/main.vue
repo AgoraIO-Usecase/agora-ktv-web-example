@@ -731,21 +731,33 @@ export default {
             let newTime = position / 1000
             newTime = newTime > 0 ? newTime : 0
             if (this.status == ENMU_BGM_STATUS.IDLE) {
-              // 未开始时记录远端主唱进度
               if (this.role == "audience") {
-                // 观众 使用 realPosition
+                // 观众
+                // 使用 realPosition
                 realPosition = realPosition / 1000
                 realPosition = realPosition > 0 ? realPosition : 0
-                this.currentTime = realPosition - (window.renderDelay / 1000)
+                realPosition = realPosition - (window.renderDelay / 1000)
+                if (Math.abs(this.currentTime - realPosition) > 1000) {
+                  return
+                }
+                this.currentTime = realPosition
                 engine.setTime(this.currentTime);
                 if (intervalId) {
                   clearInterval(intervalId)
+                  intervalId = null
                 }
                 intervalId = setInterval(() => {
+                  if ((this.currentTime + 0.02) > engine.totalTime) {
+                    clearInterval(intervalId)
+                    intervalId = null
+                    return
+                  }
                   this.currentTime += 0.02
                   engine.setTime(this.currentTime);
                 }, 20)
               } else {
+                // 伴唱
+                // 未开始时记录远端主唱进度
                 this.currentTime = newTime
               }
             } else {
