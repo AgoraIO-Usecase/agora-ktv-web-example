@@ -839,8 +839,9 @@ export default {
       this.chorused = false
     },
     reset() {
-      this.status = ENMU_BGM_STATUS.IDLE
       engine.reset();
+      this.status = ENMU_BGM_STATUS.IDLE
+      this.canPlay = false
       // 重置分数
       this.$refs.gradeViewRef.setScore(0);
       // 重置句子
