@@ -87,7 +87,7 @@ const BGM_PUBLISH_UID = 9528
 
 // 针对观众
 // 上一次系统时间
-let preTime = 0
+let preSysTime = 0
 // 上一次真实时间
 let preRealPosition = 0
 
@@ -199,7 +199,13 @@ export default {
   },
   async beforeDestroy() {
     if (this.role == 'host') {
-      await apiStopConfluence()
+      await this.endChorus()
+    }
+    if (this.localTracks.audioTrack) {
+      this.client1?.unpublish(this.localTracks.audioTrack)
+    }
+    if (this.accompaniedTrack) {
+      await this.client2?.unpublish(this.accompaniedTrack);
     }
     this.status = ENMU_BGM_STATUS.IDLE
     engine.destory();
@@ -564,6 +570,8 @@ export default {
           // 最后一句 （状态改为结束）
           this.status = ENMU_BGM_STATUS.IDLE
           this.canPlay = false
+          preRealPosition = 0
+          preSysTime = 0
           if (this.role == 'host') {
             this.client1.sendStreamMessage({
               payload: genMsg({
@@ -590,14 +598,6 @@ export default {
     },
     // 获取歌曲详情
     async getSongDetail(songCode) {
-      engine.reset();
-      // 重置分数
-      this.$refs.gradeViewRef.setScore(0);
-      // 重置句子
-      this.lyric = {};
-      this.currentLine = 0;
-      this.currentTime = 0;
-      this.testData = DEFAULT_TEST_DATA
       try {
         const res = await apiGetSongDetail({
           songCode: songCode,
@@ -653,6 +653,7 @@ export default {
         syncWithAudio: true,
       });
       songIndex++;
+      this.reset()
       await this.getSongDetail(songCode);
       if (this.role == 'host') {
         await this.playBgm()
@@ -740,11 +741,8 @@ export default {
         switch (type) {
           case 3:
             // 点歌
-            if (songCode !== this.nowMusic.songCode) {
-              this.canPlay = false
-              this.status = ENMU_BGM_STATUS.IDLE
-              this.getSongDetail(songCode)
-            }
+            this.reset()
+            this.getSongDetail(songCode)
             break
           case 4:
             // 状态同步
@@ -786,12 +784,12 @@ export default {
                 console.log("[test] realPosition < 1000", this.currentTime, realPosition)
                 return
               }
-              if (preTime && preRealPosition) {
-                let offsetTime = Math.abs(new Date().getTime() - preTime)
+              if (preSysTime && preRealPosition) {
+                let offsetTime = Math.abs(new Date().getTime() - preSysTime)
                 let offsetRealPosition = Math.abs(realPosition - preRealPosition)
                 if (Math.abs(offsetRealPosition - offsetTime) > 3000) {
                   console.log("[test] △  > 3000")
-                  preTime = new Date().getTime()
+                  preSysTime = new Date().getTime()
                   preRealPosition = realPosition
                   return
                 }
@@ -800,7 +798,7 @@ export default {
                 clearInterval(intervalId)
                 intervalId = null
               }
-              preTime = new Date().getTime()
+              preSysTime = new Date().getTime()
               preRealPosition = realPosition
               const finPosition = realPosition / 1000
               // currentTime 只能增加不能减少
@@ -834,16 +832,25 @@ export default {
     },
     // 结束合唱
     async endChorus() {
+      if (!this.chorused) {
+        return
+      }
       await apiStopConfluence()
-      if (this.localTracks.audioTrack) {
-        this.client1.unpublish(this.localTracks.audioTrack)
-      }
-      if (this.accompaniedTrack) {
-        await this.client2.unpublish(this.accompaniedTrack);
-      }
       this.chorused = false
-
     },
+    reset() {
+      this.status = ENMU_BGM_STATUS.IDLE
+      engine.reset();
+      // 重置分数
+      this.$refs.gradeViewRef.setScore(0);
+      // 重置句子
+      this.lyric = {};
+      this.currentLine = 0;
+      this.currentTime = 0;
+      this.testData = DEFAULT_TEST_DATA
+      preRealPosition = 0
+      preSysTime = 0
+    }
   }
 }
 </script>
