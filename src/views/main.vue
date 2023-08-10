@@ -747,7 +747,7 @@ export default {
             }
             break
           case 4:
-            // 转态改变
+            // 状态同步
             if (this.role == 'accompaniment') {
               // 伴唱
               if (!this.canPlay) {
