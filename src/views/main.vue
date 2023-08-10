@@ -64,7 +64,7 @@ const extension = new PitchDetectorExtension({ assetsPath });
 AgoraRTC.registerExtensions([extension]);
 
 // just for test
-// engine.log.setLevel(0);
+engine.log.setLevel(0);
 window.engine = engine;
 const PROGRESS_INTERVAL_TIME = 20;
 const DEFAULT_TEST_DATA = {

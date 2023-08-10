@@ -139,6 +139,9 @@ export default class Engine {
     const lines: LyricLineModel[] = sentence.map(({ tone }: any) => {
       let str = "";
       let tones: LyricToneModel[] = [];
+      if (!Array.isArray(tone)) {
+        tone = [tone]
+      }
       for (let t of tone) {
         str += t.word;
         tones.push({
