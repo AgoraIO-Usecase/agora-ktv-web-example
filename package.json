@@ -40,7 +40,8 @@
     "vue": "^2.7.8",
     "vue-router": "3.4.9",
     "x2js": "^3.4.4",
-    "mitt": "^3.0.0"
+    "mitt": "^3.0.0",
+    "lodash-es": "^4.17.21"
   },
   "browserslist": {
     "production": [

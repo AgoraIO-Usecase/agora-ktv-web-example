@@ -375,7 +375,7 @@ export default class Engine {
 
   // 处理时间
   private _dealTime() {
-    if (this.currentTime && this._timer++ % 5 == 0) {
+    if (this.currentTime && this._timer++ % 50 == 0) {
       let score = 0;
       if (this.lineIndex >= 0) {
         if (this.lyric?.lines) {

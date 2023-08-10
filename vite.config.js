@@ -24,11 +24,11 @@ export default defineConfig(({ mode }) => {
         assets: resolve(__dirname, "./assets"),
       },
     },
-    server: {
-      host: "0.0.0.0",
-    },
-    test: {
-      testTimeout: 30000,
-    },
+    // server: {
+    //   host: "0.0.0.0",
+    // },
+    // test: {
+    //   testTimeout: 30000,
+    // },
   }
 })

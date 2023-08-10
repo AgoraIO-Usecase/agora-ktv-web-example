@@ -49,8 +49,7 @@ import Engine, { EnumMessage } from "../engine/index.ts";
 import { PitchDetectorExtension } from "../agora-extension-pitch-detector/index.es";
 import { apiGetSongDetail, apiGetLyric, apiBuildToken, apiStopConfluence, apiStartConfluence } from "../utils/request";
 import { getMusicList, PREFIX, stringToUint8Array, Uint8ArrayToString, genDelayAudioBuffer } from "../utils/index";
-
-
+import { throttle } from "lodash-es"
 import imgPause from "../../img/pause.png"
 import imgPlay from "../../img/play.png"
 
@@ -86,10 +85,23 @@ let songIndex = 1;
 let intervalIds = []
 const BGM_PUBLISH_UID = 9528
 
+// 针对观众
+// 上一次系统时间
+let preTime = 0
+// 上一次真实时间
+let preRealPosition = 0
+
+
 const genMsg = (data) => {
   console.log("stream-message send", data)
   return stringToUint8Array(JSON.stringify(data))
 }
+
+
+const throttleSeek = throttle(function (number, fn) {
+  fn(number)
+  console.log("throttle seekBGMProgress", number)
+}, 1000)
 
 export default {
   components: {
@@ -414,6 +426,7 @@ export default {
       intervalIds.push(timer)
     },
     async playBgm() {
+      console.log("playBgm", this.currentTime)
       this.status = ENMU_BGM_STATUS.PLAYING
       this.accompaniedTrack?.play();
       this.accompaniedTrack?.startProcessAudioBuffer();
@@ -456,7 +469,6 @@ export default {
       });
       this.accompaniedTrack.setVolume(this.volume);
       this.accompaniedDelayTrack.setVolume(this.volume);
-      await this.playBgm()
     },
     async leaveRtc() {
       if (!this.joinedRtc) {
@@ -638,6 +650,9 @@ export default {
       });
       songIndex++;
       await this.getSongDetail(songCode);
+      if (this.role == 'host') {
+        await this.playBgm()
+      }
       this.loading = false;
       const end = Date.now();
       console.log("点歌耗时", end - start);
@@ -678,9 +693,9 @@ export default {
     },
     // 继续播放
     continuePlay() {
+      this.status = ENMU_BGM_STATUS.PLAYING;
       this.accompaniedTrack?.resumeProcessAudioBuffer();
       this.accompaniedDelayTrack?.resumeProcessAudioBuffer();
-      this.status = ENMU_BGM_STATUS.PLAYING;
     },
     // 跳过前奏
     skipPrelude() {
@@ -711,7 +726,7 @@ export default {
     },
     // 处理stream msg (伴唱/观众)
     handleStreamMsg(client) {
-      client.on("stream-message", (uid, data) => {
+      client.on("stream-message", async (uid, data) => {
         data = JSON.parse(Uint8ArrayToString(data))
         let { type, songCode, status, position = 0, realPosition = 0, ntp } = data
         if (!type) {
@@ -727,49 +742,22 @@ export default {
             break
           case 4:
             // 转态改变
-            let newTime = position / 1000
-            newTime = newTime > 0 ? newTime : 0
-            if (this.status == ENMU_BGM_STATUS.IDLE) {
-              if (this.role == "audience") {
-                // 观众
-                // 使用 realPosition
-                realPosition = realPosition / 1000
-                realPosition = realPosition > 0 ? realPosition : 0
-                realPosition = realPosition - (window.renderDelay / 1000)
-                if (Math.abs(this.currentTime - realPosition) > 1000) {
-                  return
-                }
-                this.currentTime = realPosition
-                engine.setTime(this.currentTime);
-                if (intervalId) {
-                  clearInterval(intervalId)
-                  intervalId = null
-                }
-                intervalId = setInterval(() => {
-                  if ((this.currentTime + 0.02) > engine.totalTime) {
-                    clearInterval(intervalId)
-                    intervalId = null
-                    return
-                  }
-                  this.currentTime += 0.02
-                  engine.setTime(this.currentTime);
-                }, 20)
-              } else {
-                // 伴唱
-                // 未开始时记录远端主唱进度
-                this.currentTime = newTime
+            if (this.role == 'accompaniment') {
+              // 伴唱
+              if (this.status == ENMU_BGM_STATUS.IDLE && position > 0) {
+                debugger
+                this.currentTime = position / 1000
+                await this.playBgm()
+                return
               }
-            } else {
-              let localPosition = 0  // 需要ms
-              localPosition = this.accompaniedTrack?.getCurrentTime() * 1000
+              let localPosition = this.accompaniedTrack?.getCurrentTime() * 1000
               const localNtpTime = this.client1?.getNtpWallTimeInMs() || this.audienceClient?.getNtpWallTimeInMs()
               const remoteNtpTime = ntp
               const remotePosition = position
               let exportPosition = localNtpTime - remoteNtpTime + remotePosition + window.audioDeviceDelay
               if (Math.abs(exportPosition - localPosition) > 40) {
-                newTime = exportPosition / 1000
-                this.currentTime = newTime
-                this.seekBGMProgress(newTime)
+                this.currentTime = exportPosition / 1000
+                throttleSeek(this.currentTime, this.seekBGMProgress.bind(this))
               }
               if (this.status !== status) {
                 if (status == ENMU_BGM_STATUS.PLAYING) {
@@ -780,6 +768,37 @@ export default {
                   this.stopPlay()
                 }
               }
+            } else if (this.role == 'audience') {
+              // 观众
+              // 使用 realPosition 
+              realPosition = realPosition > 0 ? realPosition : 0
+              realPosition = realPosition - window.renderDelay
+              if (preTime && preRealPosition) {
+                let offsetTime = Math.abs(new Date().getTime() - preTime)
+                let offsetRealPosition = Math.abs(realPosition - preRealPosition)
+                if (Math.abs(offsetRealPosition - offsetTime) > 3000) {
+                  preTime = new Date().getTime()
+                  preRealPosition = realPosition
+                  return
+                }
+              }
+              if (intervalId) {
+                clearInterval(intervalId)
+                intervalId = null
+              }
+              preTime = new Date().getTime()
+              preRealPosition = realPosition
+              this.currentTime = realPosition / 1000
+              engine.setTime(this.currentTime);
+              intervalId = setInterval(() => {
+                if ((this.currentTime + 0.02) > engine.totalTime) {
+                  clearInterval(intervalId)
+                  intervalId = null
+                  return
+                }
+                this.currentTime += 0.02
+                engine.setTime(this.currentTime);
+              }, 20)
             }
             break
         }
@@ -788,7 +807,6 @@ export default {
     // 开始合唱
     async startChorus() {
       this.chorused = true
-      // 发人声
       if (!this.client2) {
         this.client2 = AgoraRTC.createClient({
           mode: "live",
