@@ -133,6 +133,7 @@ export default {
       accompaniedTrack: null, // 伴奏
       accompaniedDelayTrack: null, // 伴奏延迟
       loading: false,
+      canPlay: false, // 是否能播放
       lyric: {}, // 歌词数据
       currentTime: 0, // 当前播放时间
       totalScore: 0, // 总分
@@ -430,6 +431,7 @@ export default {
       this.status = ENMU_BGM_STATUS.PLAYING
       this.accompaniedTrack?.play();
       this.accompaniedTrack?.startProcessAudioBuffer();
+      console.log("this.accompaniedTrack", this.accompaniedTrack)
       if (this.role == 'host') {
         this?.accompaniedDelayTrack?.startProcessAudioBuffer()
         await this.client2?.publish(this?.accompaniedDelayTrack);
@@ -561,6 +563,7 @@ export default {
         if (line == engine.totalLine - 1) {
           // 最后一句 （状态改为结束）
           this.status = ENMU_BGM_STATUS.IDLE
+          this.canPlay = false
           if (this.role == 'host') {
             this.client1.sendStreamMessage({
               payload: genMsg({
@@ -621,6 +624,7 @@ export default {
           this.createBgmAudioTracks(),
           this.handleLyc()
         ])
+        this.canPlay = true
       } catch (err) {
         console.error(err);
         this.$message.error("网络异常,请重试");
@@ -737,6 +741,8 @@ export default {
           case 3:
             // 点歌
             if (songCode !== this.nowMusic.songCode) {
+              this.canPlay = false
+              this.status = ENMU_BGM_STATUS.IDLE
               this.getSongDetail(songCode)
             }
             break
@@ -744,8 +750,11 @@ export default {
             // 转态改变
             if (this.role == 'accompaniment') {
               // 伴唱
+              if (!this.canPlay) {
+                this.currentTime = position / 1000
+                return
+              }
               if (this.status == ENMU_BGM_STATUS.IDLE && position > 0) {
-                debugger
                 this.currentTime = position / 1000
                 await this.playBgm()
                 return
@@ -773,10 +782,15 @@ export default {
               // 使用 realPosition 
               realPosition = realPosition > 0 ? realPosition : 0
               realPosition = realPosition - window.renderDelay
+              if (realPosition < (this.currentTime * 1000 - 1000)) {
+                console.log("[test] realPosition < 1000")
+                return
+              }
               if (preTime && preRealPosition) {
                 let offsetTime = Math.abs(new Date().getTime() - preTime)
                 let offsetRealPosition = Math.abs(realPosition - preRealPosition)
                 if (Math.abs(offsetRealPosition - offsetTime) > 3000) {
+                  console.log("[test] △  > 3000")
                   preTime = new Date().getTime()
                   preRealPosition = realPosition
                   return
@@ -788,7 +802,9 @@ export default {
               }
               preTime = new Date().getTime()
               preRealPosition = realPosition
-              this.currentTime = realPosition / 1000
+              const finPosition = realPosition / 1000
+              // currentTime 只能增加不能减少
+              this.currentTime =  finPosition > this.currentTime ? finPosition : this.currentTime
               engine.setTime(this.currentTime);
               intervalId = setInterval(() => {
                 if ((this.currentTime + 0.02) > engine.totalTime) {
