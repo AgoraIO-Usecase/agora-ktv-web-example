@@ -783,7 +783,7 @@ export default {
               realPosition = realPosition > 0 ? realPosition : 0
               realPosition = realPosition - window.renderDelay
               if (realPosition < (this.currentTime * 1000 - 1000)) {
-                console.log("[test] realPosition < 1000")
+                console.log("[test] realPosition < 1000", this.currentTime, realPosition)
                 return
               }
               if (preTime && preRealPosition) {
@@ -804,10 +804,10 @@ export default {
               preRealPosition = realPosition
               const finPosition = realPosition / 1000
               // currentTime 只能增加不能减少
-              this.currentTime =  finPosition > this.currentTime ? finPosition : this.currentTime
+              this.currentTime = finPosition > this.currentTime ? finPosition : this.currentTime
               engine.setTime(this.currentTime);
               intervalId = setInterval(() => {
-                if ((this.currentTime + 0.02) > engine.totalTime) {
+                if (!this.canPlay) {
                   clearInterval(intervalId)
                   intervalId = null
                   return
