@@ -78,6 +78,10 @@ export default class Engine {
     return this.lyric?.duration || 0
   }
 
+  get totalLine() {
+    return this.lyric?.lines?.length || 0
+  }
+
   // ------------------  public  ------------------
   setTime(time: number) {
     this.currentTime = time;

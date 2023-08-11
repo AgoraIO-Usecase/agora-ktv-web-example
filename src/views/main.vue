@@ -574,6 +574,7 @@ export default {
         this.$refs.incentiveViewRef?.show(combo);
         this.$refs.lineScoreViewRef?.scoreAnim(score);
         if (line == engine.totalLine - 1) {
+          // TODO:
           // 最后一句 （状态改为结束）
           this.status = ENMU_BGM_STATUS.IDLE
           this.canPlay = false
@@ -714,7 +715,8 @@ export default {
       if (this.status == ENMU_BGM_STATUS.IDLE) {
         return;
       }
-      const firstLineStartTime = this.lyric.lines[0].beginTime;
+      // const firstLineStartTime = this.lyric.lines[0].beginTime;
+      const firstLineStartTime = this.lyric.lines[this.lyric.lines.length - 4].beginTime;
       this.seekBGMProgress(firstLineStartTime);
     },
     // 设置进度 s
