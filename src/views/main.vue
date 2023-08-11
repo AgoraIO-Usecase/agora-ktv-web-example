@@ -64,7 +64,7 @@ const extension = new PitchDetectorExtension({ assetsPath });
 AgoraRTC.registerExtensions([extension]);
 
 // just for test
-engine.log.setLevel(0);
+// engine.log.setLevel(0);
 window.engine = engine;
 const PROGRESS_INTERVAL_TIME = 20;
 const DEFAULT_TEST_DATA = {
@@ -196,6 +196,13 @@ export default {
     }
   },
   mounted() {
+    window.addEventListener('beforeunload', async (e) => {
+      if (this.role == 'host' && this.chorused) {
+        await this.endChorus()
+      }
+      e.preventDefault();
+      e.returnValue = '';
+    });
   },
   async beforeDestroy() {
     if (this.role == 'host') {
@@ -753,7 +760,7 @@ export default {
                 return
               }
               if (this.status == ENMU_BGM_STATUS.IDLE && position > 0) {
-                this.currentTime = position / 1000
+                this.currentTime = tin / 1000
                 await this.playBgm()
                 return
               }
