@@ -574,7 +574,7 @@ export default {
         this.$refs.incentiveViewRef?.show(combo);
         this.$refs.lineScoreViewRef?.scoreAnim(score);
         if (line == engine.totalLine - 1) {
-          // TODO:
+          // TO
           // 最后一句 （状态改为结束）
           this.status = ENMU_BGM_STATUS.IDLE
           this.canPlay = false
@@ -715,8 +715,7 @@ export default {
       if (this.status == ENMU_BGM_STATUS.IDLE) {
         return;
       }
-      // const firstLineStartTime = this.lyric.lines[0].beginTime;
-      const firstLineStartTime = this.lyric.lines[this.lyric.lines.length - 4].beginTime;
+      const firstLineStartTime = this.lyric.lines[0].beginTime;
       this.seekBGMProgress(firstLineStartTime);
     },
     // 设置进度 s
@@ -762,7 +761,7 @@ export default {
                 return
               }
               if (this.status == ENMU_BGM_STATUS.IDLE && position > 0) {
-                this.currentTime = tin / 1000
+                this.currentTime = position / 1000
                 await this.playBgm()
                 return
               }
@@ -787,6 +786,12 @@ export default {
             } else if (this.role == 'audience') {
               // 观众
               // 使用 realPosition 
+              if (realPosition <= 0) {
+                return
+              }
+              if (!this.canPlay) {
+                return
+              }
               realPosition = realPosition > 0 ? realPosition : 0
               realPosition = realPosition - window.renderDelay
               if (realPosition < (this.currentTime * 1000 - 1000)) {
@@ -812,6 +817,7 @@ export default {
               const finPosition = realPosition / 1000
               // currentTime 只能增加不能减少
               this.currentTime = finPosition > this.currentTime ? finPosition : this.currentTime
+              console.log("[test] this.currentTime1111", typeof this.currentTime, this.currentTime)
               engine.setTime(this.currentTime);
               intervalId = setInterval(() => {
                 if (!this.canPlay) {
@@ -819,8 +825,9 @@ export default {
                   intervalId = null
                   return
                 }
-                this.currentTime += 0.02
+                this.currentTime = Number((this.currentTime + 0.02).toFixed(2))
                 engine.setTime(this.currentTime);
+                console.log('[test] currentTime', typeof this.currentTime, this.currentTime)
               }, 20)
             }
             break
