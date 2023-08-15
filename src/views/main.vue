@@ -84,6 +84,7 @@ const ENMU_BGM_STATUS = {
 let songIndex = 1;
 let intervalIds = []
 const BGM_PUBLISH_UID = 9528
+const HOST_UID = 2
 
 // 针对观众
 // 上一次系统时间
@@ -196,6 +197,9 @@ export default {
     }
   },
   mounted() {
+    // window.addEventListener("unbeforeunload", (e) => {
+    //   debugger
+    // })
     window.addEventListener('beforeunload', async (e) => {
       if (this.role == 'host' && this.chorused) {
         await this.endChorus()
@@ -244,6 +248,7 @@ export default {
       AgoraRTC.setParameter("USE_XR", true)	// 开启 xr
       AgoraRTC.setParameter("ENABLE_NTP_REPORT", true)
       AgoraRTC.setParameter("NTP_DEFAULT_FIXED_OFFSET", window.ntpOffset);
+      // AgoraRTC.setParameter("rtc.enable_nasa2", true)
       if (this.role == 'host') {
         AgoraRTC.setParameter("ENABLE_PUBLISH_AUDIO_FILTER", false)
         AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", 3)
@@ -327,6 +332,11 @@ export default {
         await this.client1.unsubscribe(user, mediaType)
         if (mediaType == 'audio') {
           user.audioTrack?.stop();
+        }
+      })
+      this.client1.on("media-reconnect-start", uid => {
+        if (uid == HOST_UID) {
+          this.$message.error(`主唱尝试重新建立媒体连接! uid: ${uid}`);
         }
       })
     },
@@ -417,7 +427,7 @@ export default {
         case "1":
           this.role = "host"
           this.roleString = "主唱"
-          this.uid = 2
+          this.uid = HOST_UID
           break
         case "2":
           this.role = "accompaniment"
@@ -474,8 +484,8 @@ export default {
       const arrayBuffer = await res.arrayBuffer()
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
       const delayAudioBuffer = genDelayAudioBuffer(audioBuffer, window.publishDelay)
-      console.log("accompaniedTrack AudioBuffer", audioBuffer)
-      console.log("accompaniedTrack AudioBuffer after delay", delayAudioBuffer)
+      console.log("accompaniedTrack AudioBuffer", audioBuffer.length)
+      console.log("accompaniedTrack AudioBuffer after delay", delayAudioBuffer.length)
       this.accompaniedTrack = await AgoraRTC.createBufferSourceAudioTrack({
         source: audioBuffer,
       });

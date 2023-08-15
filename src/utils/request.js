@@ -9,6 +9,7 @@ const appId = window?.appInfo?.appId || ""
 
 // const prefix = 'http://218.205.37.50:16000'
 const prefix = 'https://service-staging.agora.io/toolbox/openapi'
+// const prefix = "https://api.agora.io"
 
 let token = ""
 let taskId = ""
