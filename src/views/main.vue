@@ -485,7 +485,6 @@ export default {
       // const res = await fetch(this.nowMusic.playUrl)
       manager = new AudioBufferManager(this.nowMusic.playUrl)
       await manager.deal()
-      await manager.createTrack()
       manager.play()
       // const arrayBuffer = await res.arrayBuffer()
       // const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
