@@ -250,12 +250,15 @@ export default {
       AgoraRTC.setParameter("USE_XR", true)	// 开启 xr
       AgoraRTC.setParameter("ENABLE_NTP_REPORT", true)
       AgoraRTC.setParameter("NTP_DEFAULT_FIXED_OFFSET", window.ntpOffset);
+      AgoraRTC.setParameter("TOPN_SMOOTH_LEVEL", window.TOPN_SMOOTH_LEVEL);
+      AgoraRTC.setParameter("TOPN_NEW_SPEAKER_DELAY",window.TOPN_NEW_SPEAKER_DELAY);
+
       // AgoraRTC.setParameter("rtc.enable_nasa2", true)
       if (this.role == 'host') {
         AgoraRTC.setParameter("ENABLE_PUBLISH_AUDIO_FILTER", false)
-        AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", 3)
+        AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", window.topN)
       } else {
-        AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", 2)
+        AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", window.topN - 1)
       }
     },
     updateVolume(val) {
