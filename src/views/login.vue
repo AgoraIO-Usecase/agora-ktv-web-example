@@ -22,7 +22,17 @@
       publish delay:(ms) <el-input v-model="publishDelay" placeholder="publish delay"></el-input>
     </div>
     <div class="item">
-      render delay:(ms) （只针对观众端）<el-input :style="{width:'100px'}" v-model="renderDelay" placeholder="publish delay"></el-input>
+      render delay:(ms) （只针对观众端）<el-input :style="{ width: '100px' }" v-model="renderDelay"
+        placeholder="publish delay"></el-input>
+    </div>
+    <div class="item">
+      topN:<el-input v-model="topN" placeholder="topN"></el-input>
+    </div>
+    <div class="item">
+      TOPN_SMOOTH_LEVEL:<el-input v-model="TOPN_SMOOTH_LEVEL" placeholder="TOPN_SMOOTH_LEVEL"></el-input>
+    </div>
+    <div class="item">
+      TOPN_NEW_SPEAKER_DELAY:<el-input v-model="TOPN_NEW_SPEAKER_DELAY" placeholder="TOPN_NEW_SPEAKER_DELAY"></el-input>
     </div>
     <div class="item">
       appId: <el-select v-model="value" placeholder="请选择一个appId">
@@ -47,7 +57,10 @@ export default {
       ntpOffset: 80,
       audioDeviceDelay: -190,
       publishDelay: 110,
-      renderDelay:0,
+      renderDelay: 0,
+      topN: 3,
+      TOPN_SMOOTH_LEVEL: 1,
+      TOPN_NEW_SPEAKER_DELAY: 300,
       options: [
         {
           value: APP_INFO[0].appId,
@@ -89,9 +102,27 @@ export default {
       },
       immediate: true
     },
-    renderDelay:{
+    renderDelay: {
       handler(newVal) {
         window.renderDelay = Number(newVal)
+      },
+      immediate: true
+    },
+    topN: {
+      handler(newVal) {
+        window.topN = Number(newVal)
+      },
+      immediate: true
+    },
+    TOPN_SMOOTH_LEVEL: {
+      handler(newVal) {
+        window.TOPN_SMOOTH_LEVEL = Number(newVal)
+      },
+      immediate: true
+    },
+    TOPN_NEW_SPEAKER_DELAY: {
+      handler(newVal) {
+        window.TOPN_NEW_SPEAKER_DELAY = Number(newVal)
       },
       immediate: true
     }

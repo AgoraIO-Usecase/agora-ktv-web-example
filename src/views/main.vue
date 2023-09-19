@@ -52,6 +52,7 @@ import { getMusicList, PREFIX, stringToUint8Array, Uint8ArrayToString, genDelayA
 import { throttle } from "lodash-es"
 import imgPause from "../../img/pause.png"
 import imgPlay from "../../img/play.png"
+import AudioBufferManager from "../utils/manager"
 
 const AgoraRTC = window.AgoraRTC
 let { MODE = "" } = import.meta.env;
@@ -62,6 +63,7 @@ let intervalId = null
 const engine = Engine.getInstance();
 const extension = new PitchDetectorExtension({ assetsPath });
 AgoraRTC.registerExtensions([extension]);
+let manager = null
 
 // just for test
 // engine.log.setLevel(0);
@@ -165,13 +167,13 @@ export default {
         await this.client1.publish(this.localTracks.audioTrack)
       }
       if (window.appInfo.type != 'test') {
-        await this.startConfluenceService()
-        await this.startChorus()
-        this.startPitchExtension();
-        this.startConfluenceStreamMessage()
-        this.startScoreStreamMessage()
-        this.subscribeEngineEvents();
-        this.startLyricTimer();
+        // await this.startConfluenceService()
+        // await this.startChorus()
+        // this.startPitchExtension();
+        // this.startConfluenceStreamMessage()
+        // this.startScoreStreamMessage()
+        // this.subscribeEngineEvents();
+        // this.startLyricTimer();
       }
     } else if (this.role == 'accompaniment') {
       // 伴唱
@@ -248,12 +250,15 @@ export default {
       AgoraRTC.setParameter("USE_XR", true)	// 开启 xr
       AgoraRTC.setParameter("ENABLE_NTP_REPORT", true)
       AgoraRTC.setParameter("NTP_DEFAULT_FIXED_OFFSET", window.ntpOffset);
+      AgoraRTC.setParameter("TOPN_SMOOTH_LEVEL", window.TOPN_SMOOTH_LEVEL);
+      AgoraRTC.setParameter("TOPN_NEW_SPEAKER_DELAY",window.TOPN_NEW_SPEAKER_DELAY);
+
       // AgoraRTC.setParameter("rtc.enable_nasa2", true)
       if (this.role == 'host') {
         AgoraRTC.setParameter("ENABLE_PUBLISH_AUDIO_FILTER", false)
-        AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", 3)
+        AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", window.topN)
       } else {
-        AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", 2)
+        AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", window.topN - 1)
       }
     },
     updateVolume(val) {
@@ -478,22 +483,25 @@ export default {
       if (this.role == "audience") {
         return
       }
-      var audioContext = new AudioContext();
+      // var audioContext = new AudioContext();
       // const res = await fetch(this.nowMusic.accompanyUrl)
-      const res = await fetch(this.nowMusic.playUrl)
-      const arrayBuffer = await res.arrayBuffer()
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-      const delayAudioBuffer = genDelayAudioBuffer(audioBuffer, window.publishDelay)
-      console.log("accompaniedTrack AudioBuffer", audioBuffer.length)
-      console.log("accompaniedTrack AudioBuffer after delay", delayAudioBuffer.length)
-      this.accompaniedTrack = await AgoraRTC.createBufferSourceAudioTrack({
-        source: audioBuffer,
-      });
-      this.accompaniedDelayTrack = await AgoraRTC.createBufferSourceAudioTrack({
-        source: delayAudioBuffer,
-      });
-      this.accompaniedTrack.setVolume(this.volume);
-      this.accompaniedDelayTrack.setVolume(this.volume);
+      // const res = await fetch(this.nowMusic.playUrl)
+      manager = new AudioBufferManager(this.nowMusic.playUrl)
+      await manager.deal()
+      manager.play()
+      // const arrayBuffer = await res.arrayBuffer()
+      // const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      // const delayAudioBuffer = genDelayAudioBuffer(audioBuffer, window.publishDelay)
+      // console.log("accompaniedTrack AudioBuffer", audioBuffer.length)
+      // console.log("accompaniedTrack AudioBuffer after delay", delayAudioBuffer.length)
+      // this.accompaniedTrack = await AgoraRTC.createBufferSourceAudioTrack({
+      //   source: audioBuffer,
+      // });
+      // this.accompaniedDelayTrack = await AgoraRTC.createBufferSourceAudioTrack({
+      //   source: delayAudioBuffer,
+      // });
+      // this.accompaniedTrack.setVolume(this.volume);
+      // this.accompaniedDelayTrack.setVolume(this.volume);
     },
     async leaveRtc() {
       if (!this.joinedRtc) {
