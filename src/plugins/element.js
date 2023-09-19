@@ -16,7 +16,8 @@ import {
   TabPane,
   Loading,
   Select,
-  Option
+  Option,
+  Checkbox
 } from "element-ui";
 // 注意：导入的组件都需要使用 Vue.use() 进行注册
 Vue.use(Button);
@@ -32,6 +33,7 @@ Vue.use(TabPane);
 Vue.use(Progress);
 Vue.use(Select);
 Vue.use(Option);
+Vue.use(Checkbox);
 Vue.use(Loading.directive);
 
 Vue.prototype.$loading = Loading.service;

@@ -251,6 +251,8 @@ export default {
       AgoraRTC.setParameter("ENABLE_NTP_REPORT", true)
       AgoraRTC.setParameter("NTP_DEFAULT_FIXED_OFFSET", window.ntpOffset);
       AgoraRTC.setParameter("TOPN_SMOOTH_LEVEL", window.TOPN_SMOOTH_LEVEL);
+      AgoraRTC.setParameter("ENABLE_ENCODED_TRANSFORM", !!window.ENABLE_ENCODED_TRANSFORM);
+      AgoraRTC.setParameter("ENABLE_AUDIO_TOPN", !!window.ENABLE_AUDIO_TOPN);
       AgoraRTC.setParameter("TOPN_NEW_SPEAKER_DELAY", window.TOPN_NEW_SPEAKER_DELAY);
       window.TOPN_SWITCH_HOLD_MS && AgoraRTC.setParameter("TOPN_SWITCH_HOLD_MS", window.TOPN_SWITCH_HOLD_MS);
       window.TOPN_AUDIO_GAIN && AgoraRTC.setParameter("TOPN_AUDIO_GAIN", window.TOPN_AUDIO_GAIN);

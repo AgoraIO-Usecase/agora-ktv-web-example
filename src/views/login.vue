@@ -50,7 +50,16 @@
       </div>
       <el-input v-model="TOPN_AUDIO_GAIN" placeholder="TOPN_AUDIO_GAIN"></el-input>
     </div>
-
+    <div class="item">
+      <div>
+        ENABLE_ENCODED_TRANSFORM: <el-checkbox v-model="ENABLE_ENCODED_TRANSFORM" @change="encodeChange"></el-checkbox>
+      </div>
+    </div>
+    <div class="item">
+      <div>
+        ENABLE_AUDIO_TOPN: <el-checkbox v-model="ENABLE_AUDIO_TOPN" @change="topNChange"></el-checkbox>
+      </div>
+    </div>
     <div class="start">
       <el-button @click="onSubmit" style="width: 150px" :disabled="!channel || !isSelect">开始</el-button>
     </div>
@@ -74,6 +83,8 @@ export default {
       TOPN_NEW_SPEAKER_DELAY: 300,
       TOPN_SWITCH_HOLD_MS: 0,
       TOPN_AUDIO_GAIN: 0,
+      ENABLE_ENCODED_TRANSFORM: false,
+      ENABLE_AUDIO_TOPN: false,
       options: [
         {
           value: APP_INFO[0].appId,
@@ -150,6 +161,18 @@ export default {
         window.TOPN_AUDIO_GAIN = Number(newVal)
       },
       immediate: true
+    },
+    ENABLE_ENCODED_TRANSFORM: {
+      handler(newVal) {
+        window.ENABLE_ENCODED_TRANSFORM = !!newVal
+      },
+      immediate: true
+    },
+    ENABLE_AUDIO_TOPN: {
+      handler(newVal) {
+        window.ENABLE_AUDIO_TOPN = !!newVal
+      },
+      immediate: true
     }
   },
   methods: {
@@ -166,6 +189,12 @@ export default {
         },
       });
     },
+    encodeChange(vale){
+      this.ENABLE_ENCODED_TRANSFORM = vale
+    },
+    topNChange(vale){
+      this.ENABLE_AUDIO_TOPN = vale
+    }
   },
 };
 </script>
