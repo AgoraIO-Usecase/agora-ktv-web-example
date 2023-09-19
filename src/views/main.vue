@@ -167,13 +167,13 @@ export default {
         await this.client1.publish(this.localTracks.audioTrack)
       }
       if (window.appInfo.type != 'test') {
-        // await this.startConfluenceService()
-        // await this.startChorus()
-        // this.startPitchExtension();
-        // this.startConfluenceStreamMessage()
-        // this.startScoreStreamMessage()
-        // this.subscribeEngineEvents();
-        // this.startLyricTimer();
+        await this.startConfluenceService()
+        await this.startChorus()
+        this.startPitchExtension();
+        this.startConfluenceStreamMessage()
+        this.startScoreStreamMessage()
+        this.subscribeEngineEvents();
+        this.startLyricTimer();
       }
     } else if (this.role == 'accompaniment') {
       // 伴唱
@@ -251,7 +251,9 @@ export default {
       AgoraRTC.setParameter("ENABLE_NTP_REPORT", true)
       AgoraRTC.setParameter("NTP_DEFAULT_FIXED_OFFSET", window.ntpOffset);
       AgoraRTC.setParameter("TOPN_SMOOTH_LEVEL", window.TOPN_SMOOTH_LEVEL);
-      AgoraRTC.setParameter("TOPN_NEW_SPEAKER_DELAY",window.TOPN_NEW_SPEAKER_DELAY);
+      AgoraRTC.setParameter("TOPN_NEW_SPEAKER_DELAY", window.TOPN_NEW_SPEAKER_DELAY);
+      window.TOPN_SWITCH_HOLD_MS && AgoraRTC.setParameter("TOPN_SWITCH_HOLD_MS", window.TOPN_SWITCH_HOLD_MS);
+      window.TOPN_AUDIO_GAIN && AgoraRTC.setParameter("TOPN_AUDIO_GAIN", window.TOPN_AUDIO_GAIN);
 
       // AgoraRTC.setParameter("rtc.enable_nasa2", true)
       if (this.role == 'host') {

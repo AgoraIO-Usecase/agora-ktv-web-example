@@ -9,6 +9,12 @@
       <div :class="isSelect == 3 ? 'box selected' : 'box'" @click="selectHost(3)">我是观众 <i class="el-icon-arrow-right"></i>
       </div>
     </div>
+    <div class="item">
+      appId: <el-select v-model="value" placeholder="请选择一个appId">
+        <el-option v-for="item in options" :key="item.label" :label="item.label" :value="item.value">
+        </el-option>
+      </el-select>
+    </div>
     <div class="item channel">
       channel: <el-input v-model="channel" placeholder="请输入一个频道"></el-input>
     </div>
@@ -29,17 +35,22 @@
       topN:<el-input v-model="topN" placeholder="topN"></el-input>
     </div>
     <div class="item">
-      TOPN_SMOOTH_LEVEL:<el-input v-model="TOPN_SMOOTH_LEVEL" placeholder="TOPN_SMOOTH_LEVEL"></el-input>
+      <div>TOPN_SMOOTH_LEVEL:</div>
+      <el-input v-model="TOPN_SMOOTH_LEVEL" placeholder="TOPN_SMOOTH_LEVEL"></el-input>
     </div>
     <div class="item">
       TOPN_NEW_SPEAKER_DELAY:<el-input v-model="TOPN_NEW_SPEAKER_DELAY" placeholder="TOPN_NEW_SPEAKER_DELAY"></el-input>
     </div>
     <div class="item">
-      appId: <el-select v-model="value" placeholder="请选择一个appId">
-        <el-option v-for="item in options" :key="item.label" :label="item.label" :value="item.value">
-        </el-option>
-      </el-select>
+      TOPN_SWITCH_HOLD_MS:<el-input v-model="TOPN_SWITCH_HOLD_MS" placeholder="TOPN_SWITCH_HOLD_MS"></el-input>
     </div>
+    <div class="item">
+      <div>
+        TOPN_AUDIO_GAIN:
+      </div>
+      <el-input v-model="TOPN_AUDIO_GAIN" placeholder="TOPN_AUDIO_GAIN"></el-input>
+    </div>
+
     <div class="start">
       <el-button @click="onSubmit" style="width: 150px" :disabled="!channel || !isSelect">开始</el-button>
     </div>
@@ -61,6 +72,8 @@ export default {
       topN: 3,
       TOPN_SMOOTH_LEVEL: 1,
       TOPN_NEW_SPEAKER_DELAY: 300,
+      TOPN_SWITCH_HOLD_MS: 0,
+      TOPN_AUDIO_GAIN: 0,
       options: [
         {
           value: APP_INFO[0].appId,
@@ -123,6 +136,18 @@ export default {
     TOPN_NEW_SPEAKER_DELAY: {
       handler(newVal) {
         window.TOPN_NEW_SPEAKER_DELAY = Number(newVal)
+      },
+      immediate: true
+    },
+    TOPN_SWITCH_HOLD_MS: {
+      handler(newVal) {
+        window.TOPN_SWITCH_HOLD_MS = Number(newVal)
+      },
+      immediate: true
+    },
+    TOPN_AUDIO_GAIN: {
+      handler(newVal) {
+        window.TOPN_AUDIO_GAIN = Number(newVal)
       },
       immediate: true
     }
