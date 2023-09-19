@@ -153,7 +153,7 @@ export default {
   }
 
   .item {
-    margin-top: 20px;
+    margin-top: 5px;
     text-align: left;
     color: white;
 
