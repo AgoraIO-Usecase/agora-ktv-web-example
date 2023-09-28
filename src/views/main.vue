@@ -244,6 +244,7 @@ export default {
       return this.status === ENMU_BGM_STATUS.PLAYING ? imgPause : imgPlay
     }
   },
+     // AgoraRTC.setParameter("rtc.enable_nasa2", true)
   methods: {
     setParameter() {
       AgoraRTC.setParameter("GATEWAY_ADDRESS", [{ "ip": "120.195.180.30", "port": 16000 }]) // 仅测试环境需要
@@ -256,8 +257,6 @@ export default {
       AgoraRTC.setParameter("TOPN_NEW_SPEAKER_DELAY", window.TOPN_NEW_SPEAKER_DELAY);
       window.TOPN_SWITCH_HOLD_MS && AgoraRTC.setParameter("TOPN_SWITCH_HOLD_MS", window.TOPN_SWITCH_HOLD_MS);
       window.TOPN_AUDIO_GAIN && AgoraRTC.setParameter("TOPN_AUDIO_GAIN", window.TOPN_AUDIO_GAIN);
-
-      // AgoraRTC.setParameter("rtc.enable_nasa2", true)
       if (this.role == 'host') {
         AgoraRTC.setParameter("ENABLE_PUBLISH_AUDIO_FILTER", false)
         AgoraRTC.setParameter("SUBSCRIBE_AUDIO_FILTER_TOPN", window.topN)
