@@ -105,3 +105,37 @@ export const genDelayAudioBuffer = (buffer, ms) => {
 
   return newAudioBuffer
 }
+
+
+export async function setupSenderTransform(transceiver) {
+  const isChrome =
+    navigator.userAgent.indexOf("Firefox") === -1 &&
+    navigator.userAgent.indexOf("Chrome") > -1;
+
+  //@ts-ignore
+  if (!transceiver || !isChrome || !window.ENABLE_ENCODED_TRANSFORM) {
+    return;
+  }
+  const sender = transceiver.sender;
+
+  const id = transceiver.sender.track?.id;
+  if (!id) {
+    return;
+  }
+
+  let streams;
+  try {
+    // @ts-ignore
+    streams = sender.createEncodedStreams();
+  } catch (e) {
+    console.log(`cannot create encoded streams for track ${id}`);
+    return;
+  }
+  const transformer = new TransformStream({
+    transform: async (chunk, controller) => {
+      controller.enqueue(chunk);
+    },
+  });
+
+  streams.readable.pipeThrough(transformer).pipeTo(streams.writable);
+}

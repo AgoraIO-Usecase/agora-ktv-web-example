@@ -48,7 +48,7 @@ import VoiceSet from "../components/VoiceSet/index.vue"
 import Engine, { EnumMessage } from "../engine/index.ts";
 import { PitchDetectorExtension } from "../agora-extension-pitch-detector/index.es";
 import { apiGetSongDetail, apiGetLyric, apiBuildToken, apiStopConfluence, apiStartConfluence } from "../utils/request";
-import { getMusicList, PREFIX, stringToUint8Array, Uint8ArrayToString, genDelayAudioBuffer } from "../utils/index";
+import { getMusicList, PREFIX, stringToUint8Array, Uint8ArrayToString, genDelayAudioBuffer, setupSenderTransform } from "../utils/index";
 import { throttle } from "lodash-es"
 import imgPause from "../../img/pause.png"
 import imgPlay from "../../img/play.png"
@@ -164,6 +164,7 @@ export default {
       this.intervalCanOrder()
       this.handleHostRtcEvents()
       if (this.localTracks.audioTrack) {
+        this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
         await this.client1.publish(this.localTracks.audioTrack)
       }
       if (window.appInfo.type != 'test') {
@@ -182,6 +183,7 @@ export default {
       });
       await this.accompanimentJoinRtc()
       await this.handleAccompanimentRtcEvents()
+      this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
       await this.client1.publish(this.localTracks.audioTrack)
       if (window.appInfo.type != 'test') {
         this.startPitchExtension();
@@ -244,7 +246,7 @@ export default {
       return this.status === ENMU_BGM_STATUS.PLAYING ? imgPause : imgPlay
     }
   },
-     // AgoraRTC.setParameter("rtc.enable_nasa2", true)
+  // AgoraRTC.setParameter("rtc.enable_nasa2", true)
   methods: {
     setParameter() {
       AgoraRTC.setParameter("GATEWAY_ADDRESS", [{ "ip": "120.195.180.30", "port": 16000 }]) // 仅测试环境需要
@@ -486,25 +488,27 @@ export default {
       if (this.role == "audience") {
         return
       }
-      // var audioContext = new AudioContext();
-      // const res = await fetch(this.nowMusic.accompanyUrl)
+      var audioContext = new AudioContext();
+      const res = await fetch(this.nowMusic.accompanyUrl)
       // const res = await fetch(this.nowMusic.playUrl)
-      manager = new AudioBufferManager(this.nowMusic.playUrl)
-      await manager.deal()
-      manager.play()
-      // const arrayBuffer = await res.arrayBuffer()
-      // const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-      // const delayAudioBuffer = genDelayAudioBuffer(audioBuffer, window.publishDelay)
-      // console.log("accompaniedTrack AudioBuffer", audioBuffer.length)
-      // console.log("accompaniedTrack AudioBuffer after delay", delayAudioBuffer.length)
-      // this.accompaniedTrack = await AgoraRTC.createBufferSourceAudioTrack({
-      //   source: audioBuffer,
-      // });
-      // this.accompaniedDelayTrack = await AgoraRTC.createBufferSourceAudioTrack({
-      //   source: delayAudioBuffer,
-      // });
-      // this.accompaniedTrack.setVolume(this.volume);
-      // this.accompaniedDelayTrack.setVolume(this.volume);
+
+      // manager = new AudioBufferManager(this.nowMusic.playUrl)
+      // await manager.deal()
+      // manager.play()
+
+      const arrayBuffer = await res.arrayBuffer()
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      const delayAudioBuffer = genDelayAudioBuffer(audioBuffer, window.publishDelay)
+      console.log("accompaniedTrack AudioBuffer", audioBuffer.length)
+      console.log("accompaniedTrack AudioBuffer after delay", delayAudioBuffer.length)
+      this.accompaniedTrack = await AgoraRTC.createBufferSourceAudioTrack({
+        source: audioBuffer,
+      });
+      this.accompaniedDelayTrack = await AgoraRTC.createBufferSourceAudioTrack({
+        source: delayAudioBuffer,
+      });
+      this.accompaniedTrack.setVolume(this.volume);
+      this.accompaniedDelayTrack.setVolume(this.volume);
     },
     async leaveRtc() {
       if (!this.joinedRtc) {
@@ -888,6 +892,16 @@ export default {
       this.testData = DEFAULT_TEST_DATA
       preRealPosition = 0
       preSysTime = 0
+    },
+    setupSenderTransform(transceiver) {
+      const isChrome =
+        navigator.userAgent.indexOf("Firefox") === -1 &&
+        navigator.userAgent.indexOf("Chrome") > -1;
+
+      if (!transceiver || !isChrome || !window.ENABLE_ENCODED_TRANSFORM) {
+        return;
+      }
+
     }
   }
 }
