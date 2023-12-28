@@ -50,6 +50,7 @@ import { PitchDetectorExtension } from "../agora-extension-pitch-detector/index.
 import { apiGetSongDetail, apiGetLyric, apiBuildToken, apiStopConfluence, apiStartConfluence } from "../utils/request";
 import { getMusicList, PREFIX, stringToUint8Array, Uint8ArrayToString, genDelayAudioBuffer, setupSenderTransform } from "../utils/index";
 import { throttle } from "lodash-es"
+import { decodeAudioMetadata, encodeAudioMetadata, encodeStreamMsg, decodeStreamMsg } from "../utils/index"
 import imgPause from "../../img/pause.png"
 import imgPlay from "../../img/play.png"
 import AudioBufferManager from "../utils/manager"
@@ -59,11 +60,11 @@ let { MODE = "" } = import.meta.env;
 const assetsPath = MODE == "development" ? "/" : PREFIX;
 let appId = window?.appInfo?.appId
 let token = null
-let intervalId = null
 const engine = Engine.getInstance();
 const extension = new PitchDetectorExtension({ assetsPath });
 AgoraRTC.registerExtensions([extension]);
 let manager = null
+// let intervalId = null
 
 // just for test
 // engine.log.setLevel(0);
@@ -93,12 +94,6 @@ const HOST_UID = 2
 let preSysTime = 0
 // 上一次真实时间
 let preRealPosition = 0
-
-
-const genMsg = (data) => {
-  console.log("stream-message send", data)
-  return stringToUint8Array(JSON.stringify(data))
-}
 
 
 const throttleSeek = throttle(function (number, fn) {
@@ -164,7 +159,7 @@ export default {
       this.intervalCanOrder()
       this.handleHostRtcEvents()
       if (this.localTracks.audioTrack) {
-        this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
+        // this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
         await this.client1.publish(this.localTracks.audioTrack)
       }
       if (window.appInfo.type != 'test') {
@@ -183,7 +178,7 @@ export default {
       });
       await this.accompanimentJoinRtc()
       await this.handleAccompanimentRtcEvents()
-      this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
+      // this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
       await this.client1.publish(this.localTracks.audioTrack)
       if (window.appInfo.type != 'test') {
         this.startPitchExtension();
@@ -195,7 +190,7 @@ export default {
     } else {
       // 观众
       await this.audienceJoinRtc()
-      this.handleStreamMsg(this.audienceClient)
+      // this.handleStreamMsg(this.audienceClient)
       this.subscribeEngineEvents();
       this.handleAudienceRtcEvents()
     }
@@ -228,10 +223,10 @@ export default {
     intervalIds.forEach(item => clearInterval(item))
     intervalIds = []
     await this.leaveRtc();
-    if (intervalId) {
-      clearInterval(intervalId)
-      intervalId = null
-    }
+    // if (intervalId) {
+    //   clearInterval(intervalId)
+    //   intervalId = null
+    // }
   },
   watch: {
     currentTime(val) {
@@ -254,7 +249,10 @@ export default {
       AgoraRTC.setParameter("ENABLE_NTP_REPORT", true)
       AgoraRTC.setParameter("NTP_DEFAULT_FIXED_OFFSET", window.ntpOffset);
       AgoraRTC.setParameter("TOPN_SMOOTH_LEVEL", window.TOPN_SMOOTH_LEVEL);
+      // AUDIO_METADATA
       AgoraRTC.setParameter("ENABLE_ENCODED_TRANSFORM", !!window.ENABLE_ENCODED_TRANSFORM);
+      AgoraRTC.setParameter("ENABLE_AUDIO_METADATA", true);
+      // AUDIO_METADATA
       AgoraRTC.setParameter("ENABLE_AUDIO_TOPN", !!window.ENABLE_AUDIO_TOPN);
       AgoraRTC.setParameter("TOPN_NEW_SPEAKER_DELAY", window.TOPN_NEW_SPEAKER_DELAY);
       window.TOPN_SWITCH_HOLD_MS && AgoraRTC.setParameter("TOPN_SWITCH_HOLD_MS", window.TOPN_SWITCH_HOLD_MS);
@@ -387,12 +385,15 @@ export default {
           user.audioTrack.stop();
         }
       })
+      this.audienceClient.on("audio-metadata", (metadata) => {
+        const res = decodeAudioMetadata(metadata);
+      });
     },
     startConfluenceStreamMessage() {
       let id = setInterval(() => {
         if (this.chorused) {
           this.client1.sendStreamMessage({
-            payload: genMsg({
+            payload: encodeStreamMsg({
               service: "audio_smart_mixer_status",
               version: "V1",  // 协议版本号
               payload: {
@@ -413,7 +414,7 @@ export default {
       let id = setInterval(() => {
         if (this.status !== ENMU_BGM_STATUS.IDLE && this.status !== ENMU_BGM_STATUS.PAUSE) {
           this.client1.sendStreamMessage({
-            payload: genMsg({
+            payload: encodeStreamMsg({
               service: "audio_smart_mixer",
               version: "V1", // 协议版本号
               payload: {
@@ -469,7 +470,7 @@ export default {
         this?.accompaniedDelayTrack?.startProcessAudioBuffer()
         await this.client2?.publish(this?.accompaniedDelayTrack);
         this.client1.sendStreamMessage({
-          payload: genMsg({
+          payload: encodeStreamMsg({
             type: 4,
             ntp: this.client1.getNtpWallTimeInMs(),
             songCode: this.nowMusic.songCode,
@@ -491,7 +492,6 @@ export default {
       var audioContext = new AudioContext();
       const res = await fetch(this.nowMusic.accompanyUrl)
       // const res = await fetch(this.nowMusic.playUrl)
-
       // manager = new AudioBufferManager(this.nowMusic.playUrl)
       // await manager.deal()
       // manager.play()
@@ -573,18 +573,30 @@ export default {
       engine.on("timeUpdate", (data) => {
         const { progress } = data
         if (this.joinedRtc && this.role == 'host' && this.status != ENMU_BGM_STATUS.PAUSE) {
+          let position = parseInt(progress * 1000 - window.audioDeviceDelay)
+          let realPosition = parseInt(progress * 1000) - window.publishDelay
+          let songCode = this.nowMusic.songCode
           this.client1.sendStreamMessage({
-            payload: genMsg({
+            payload: encodeStreamMsg({
               type: 4,
               ntp: this.client1.getNtpWallTimeInMs(),
-              songCode: this.nowMusic.songCode,
+              songCode: songCode,
               status: this.status,
-              position: parseInt(progress * 1000 - window.audioDeviceDelay),
-              realPosition: parseInt(progress * 1000) - window.publishDelay,
+              position: position,
+              realPosition: realPosition,
               forward: true,
             }),
             syncWithAudio: true,
           });
+          const metadata = encodeAudioMetadata({
+            cmd: "setLrcTime",
+            ts: realPosition,
+            songId: songCode,
+            forward: true,
+          });
+          this.client1.sendAudioMetadata({
+            value: metadata
+          })
         }
       });
       engine.on("lineEnd", async (data) => {
@@ -607,7 +619,7 @@ export default {
           preSysTime = 0
           if (this.role == 'host') {
             this.client1.sendStreamMessage({
-              payload: genMsg({
+              payload: encodeStreamMsg({
                 type: 4,
                 ntp: this.client1.getNtpWallTimeInMs(),
                 songCode: this.nowMusic.songCode,
@@ -676,7 +688,7 @@ export default {
         }
       });
       this.client1.sendStreamMessage({
-        payload: genMsg({
+        payload: encodeStreamMsg({
           type: EnumMessage.order,
           songCode: Number(songCode),
           songIndex: songIndex,
@@ -716,7 +728,7 @@ export default {
       this.accompaniedDelayTrack?.pauseProcessAudioBuffer();
       if (this.role == 'host') {
         this.client1.sendStreamMessage({
-          payload: genMsg({
+          payload: encodeStreamMsg({
             type: 4,
             ntp: this.client1.getNtpWallTimeInMs(),
             songCode: this.nowMusic.songCode,
@@ -765,7 +777,7 @@ export default {
     // 处理stream msg (伴唱/观众)
     handleStreamMsg(client) {
       client.on("stream-message", async (uid, data) => {
-        data = JSON.parse(Uint8ArrayToString(data))
+        data = decodeStreamMsg(data)
         let { type, songCode, status, position = 0, realPosition = 0, ntp } = data
         if (!type) {
           return
@@ -808,52 +820,6 @@ export default {
                   this.stopPlay()
                 }
               }
-            } else if (this.role == 'audience') {
-              // 观众
-              // 使用 realPosition 
-              if (realPosition <= 0) {
-                return
-              }
-              if (!this.canPlay) {
-                return
-              }
-              realPosition = realPosition > 0 ? realPosition : 0
-              realPosition = realPosition - window.renderDelay
-              if (realPosition < (this.currentTime * 1000 - 1000)) {
-                console.log("[test] realPosition < 1000", this.currentTime, realPosition)
-                return
-              }
-              if (preSysTime && preRealPosition) {
-                let offsetTime = Math.abs(new Date().getTime() - preSysTime)
-                let offsetRealPosition = Math.abs(realPosition - preRealPosition)
-                if (Math.abs(offsetRealPosition - offsetTime) > 3000) {
-                  console.log("[test] △  > 3000")
-                  preSysTime = new Date().getTime()
-                  preRealPosition = realPosition
-                  return
-                }
-              }
-              if (intervalId) {
-                clearInterval(intervalId)
-                intervalId = null
-              }
-              preSysTime = new Date().getTime()
-              preRealPosition = realPosition
-              const finPosition = realPosition / 1000
-              // currentTime 只能增加不能减少
-              this.currentTime = finPosition > this.currentTime ? finPosition : this.currentTime
-              console.log("[test] this.currentTime1111", typeof this.currentTime, this.currentTime)
-              engine.setTime(this.currentTime);
-              intervalId = setInterval(() => {
-                if (!this.canPlay) {
-                  clearInterval(intervalId)
-                  intervalId = null
-                  return
-                }
-                this.currentTime = Number((this.currentTime + 0.02).toFixed(2))
-                engine.setTime(this.currentTime);
-                console.log('[test] currentTime', typeof this.currentTime, this.currentTime)
-              }, 20)
             }
             break
         }
@@ -892,16 +858,6 @@ export default {
       this.testData = DEFAULT_TEST_DATA
       preRealPosition = 0
       preSysTime = 0
-    },
-    setupSenderTransform(transceiver) {
-      const isChrome =
-        navigator.userAgent.indexOf("Firefox") === -1 &&
-        navigator.userAgent.indexOf("Chrome") > -1;
-
-      if (!transceiver || !isChrome || !window.ENABLE_ENCODED_TRANSFORM) {
-        return;
-      }
-
     }
   }
 }

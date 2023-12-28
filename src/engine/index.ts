@@ -391,7 +391,7 @@ export default class Engine {
           score = 0;
         }
       }
-      // 100ms 抛出一次事件
+      // 1000ms 抛出一次事件
       this._emitter.emit("timeUpdate", {
         progress: this.currentTime,
         lineIndex: this.lineIndex,

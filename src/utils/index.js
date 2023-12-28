@@ -1,3 +1,4 @@
+import { LrcTime } from "../proto/proto"
 const { VITE_AGORA_APP_ID } = import.meta.env || {}
 
 // string to Uint8Array
@@ -81,8 +82,6 @@ export const APP_INFO = [
 ]
 
 
-
-
 // 生成延迟后的AudioBuffer
 export const genDelayAudioBuffer = (buffer, ms) => {
   var numChannels = buffer.numberOfChannels;
@@ -139,3 +138,83 @@ export async function setupSenderTransform(transceiver) {
 
   streams.readable.pipeThrough(transformer).pipeTo(streams.writable);
 }
+
+
+// const textDecoder = new TextDecoder();
+// const textEncoder = new TextEncoder();
+
+
+export const encodeAudioMetadata = (data = {}) => {
+  console.log("[encodeAudioMetadata] ", data)
+  const buffer = LrcTime.encode(data).finish()
+  return buffer
+}
+
+export const decodeAudioMetadata = (metadataBuffer) => {
+  const decodeData = LrcTime.decode(metadataBuffer)
+  console.log("[decodeAudioMetadata] ", decodeData)
+  return decodeData
+}
+
+
+
+export const encodeStreamMsg = (data) => {
+  console.log("stream-message send", data)
+  return stringToUint8Array(JSON.stringify(data))
+}
+
+export const decodeStreamMsg = (data) => {
+  return JSON.parse(Uint8ArrayToString(data))
+}
+
+
+
+
+
+// else if (this.role == 'audience') {
+//   // 观众
+//   // 使用 realPosition 
+//   if (realPosition <= 0) {
+//     return
+//   }
+//   if (!this.canPlay) {
+//     return
+//   }
+//   realPosition = realPosition > 0 ? realPosition : 0
+//   realPosition = realPosition - window.renderDelay
+//   if (realPosition < (this.currentTime * 1000 - 1000)) {
+//     console.log("[test] realPosition < 1000", this.currentTime, realPosition)
+//     return
+//   }
+//   if (preSysTime && preRealPosition) {
+//     let offsetTime = Math.abs(new Date().getTime() - preSysTime)
+//     let offsetRealPosition = Math.abs(realPosition - preRealPosition)
+//     if (Math.abs(offsetRealPosition - offsetTime) > 3000) {
+//       console.log("[test] △  > 3000")
+//       preSysTime = new Date().getTime()
+//       preRealPosition = realPosition
+//       return
+//     }
+//   }
+//   if (intervalId) {
+//     clearInterval(intervalId)
+//     intervalId = null
+//   }
+//   preSysTime = new Date().getTime()
+//   preRealPosition = realPosition
+//   const finPosition = realPosition / 1000
+//   // currentTime 只能增加不能减少
+//   this.currentTime = finPosition > this.currentTime ? finPosition : this.currentTime
+//   console.log("[test] this.currentTime1111", typeof this.currentTime, this.currentTime)
+//   engine.setTime(this.currentTime);
+//   intervalId = setInterval(() => {
+//     if (!this.canPlay) {
+//       clearInterval(intervalId)
+//       intervalId = null
+//       return
+//     }
+//     this.currentTime = Number((this.currentTime + 0.02).toFixed(2))
+//     engine.setTime(this.currentTime);
+//     console.log('[test] currentTime', typeof this.currentTime, this.currentTime)
+//   }, 20)
+// }

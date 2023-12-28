@@ -69,6 +69,8 @@
 <script>
 import { APP_INFO } from "../utils/index"
 
+
+
 export default {
   data() {
     return {
@@ -83,7 +85,7 @@ export default {
       TOPN_NEW_SPEAKER_DELAY: 300,
       TOPN_SWITCH_HOLD_MS: 0,
       TOPN_AUDIO_GAIN: 0,
-      ENABLE_ENCODED_TRANSFORM: false,
+      ENABLE_ENCODED_TRANSFORM: true,
       ENABLE_AUDIO_TOPN: false,
       options: [
         {
@@ -189,10 +191,10 @@ export default {
         },
       });
     },
-    encodeChange(vale){
+    encodeChange(vale) {
       this.ENABLE_ENCODED_TRANSFORM = vale
     },
-    topNChange(vale){
+    topNChange(vale) {
       this.ENABLE_AUDIO_TOPN = vale
     }
   },
