@@ -89,12 +89,6 @@ let intervalIds = []
 const BGM_PUBLISH_UID = 9528
 const HOST_UID = 2
 
-// 针对观众
-// 上一次系统时间
-let preSysTime = 0
-// 上一次真实时间
-let preRealPosition = 0
-
 
 const throttleSeek = throttle(function (number, fn) {
   fn(number)
@@ -150,6 +144,7 @@ export default {
   async created() {
     this.calcInfo()
     this.setParameter()
+    this.deal
     if (this.role == 'host') {
       // 主唱 
       this.localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
@@ -170,22 +165,6 @@ export default {
         this.startScoreStreamMessage()
         this.subscribeEngineEvents();
         this.startLyricTimer();
-      }
-    } else if (this.role == 'accompaniment') {
-      // 伴唱
-      this.localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
-        AEC: false
-      });
-      await this.accompanimentJoinRtc()
-      await this.handleAccompanimentRtcEvents()
-      // this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
-      await this.client1.publish(this.localTracks.audioTrack)
-      if (window.appInfo.type != 'test') {
-        this.startPitchExtension();
-        this.startScoreStreamMessage()
-        this.subscribeEngineEvents();
-        this.startLyricTimer();
-        this.handleStreamMsg(this.client1)
       }
     } else {
       // 观众
@@ -297,15 +276,6 @@ export default {
       this.uid = await this.client1.join(appId, this.channel, token, this.uid);
       this.joinedRtc = true
     },
-    async accompanimentJoinRtc() {
-      this.client1 = AgoraRTC.createClient({
-        mode: "live",
-        codec: "vp8",
-        role: "host",
-      });
-      this.uid = await this.client1.join(appId, this.channel, token, this.uid);
-      this.joinedRtc = true
-    },
     async audienceJoinRtc() {
       this.audienceClient = AgoraRTC.createClient({
         mode: "live",
@@ -345,29 +315,6 @@ export default {
       this.client1.on("media-reconnect-start", uid => {
         if (uid == HOST_UID) {
           this.$message.error(`主唱尝试重新建立媒体连接! uid: ${uid}`);
-        }
-      })
-    },
-    // 伴唱处理rtc事件
-    handleAccompanimentRtcEvents() {
-      this.client1.on("user-published", async (user, mediaType) => {
-        const uid = user.uid
-        if (uid == BGM_PUBLISH_UID) {
-          return
-        }
-        await this.client1.subscribe(user, mediaType)
-        if (mediaType == 'audio') {
-          user.audioTrack.play();
-        }
-      })
-      this.client1.on("user-unpublished", async (user, mediaType) => {
-        const uid = user.uid
-        if (uid == BGM_PUBLISH_UID) {
-          return
-        }
-        await this.client1.subscribe(user, mediaType)
-        if (mediaType == 'audio') {
-          user.audioTrack.stop();
         }
       })
     },
@@ -495,7 +442,6 @@ export default {
       // manager = new AudioBufferManager(this.nowMusic.playUrl)
       // await manager.deal()
       // manager.play()
-
       const arrayBuffer = await res.arrayBuffer()
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
       const delayAudioBuffer = genDelayAudioBuffer(audioBuffer, window.publishDelay)

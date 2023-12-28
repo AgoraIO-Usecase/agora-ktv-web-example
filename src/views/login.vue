@@ -1,10 +1,8 @@
 <template>
   <div class="login">
     <div class="select">
-      <div class="title">请选择你的身份</div>
+      <div class="title">web 独唱场景</div>
       <div :class="isSelect == 1 ? 'box selected' : 'box'" @click="selectHost(1)">我是主唱 <i class="el-icon-arrow-right"></i>
-      </div>
-      <div :class="isSelect == 2 ? 'box selected' : 'box'" @click="selectHost(2)">我是伴唱 <i class="el-icon-arrow-right"></i>
       </div>
       <div :class="isSelect == 3 ? 'box selected' : 'box'" @click="selectHost(3)">我是观众 <i class="el-icon-arrow-right"></i>
       </div>
