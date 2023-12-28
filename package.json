@@ -1,5 +1,5 @@
 {
-  "name": "agora-chorus",
+  "name": "vocal-solo",
   "private": true,
   "version": "0.0.0",
   "scripts": {
@@ -33,6 +33,7 @@
     "yorkie": "^2.0.0",
     "node-sass": "^8.0.0",
     "vitest": "^0.29.7",
+    "msw":"^2.0.11",
     "protobufjs-cli":"^1.1.2"
   },
   "dependencies": {

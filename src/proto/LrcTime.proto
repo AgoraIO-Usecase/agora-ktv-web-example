@@ -9,5 +9,6 @@ message LrcTime {
   MsgType type = 1;
   bool forward = 2;
   int64 ts = 3;
-  int32 songId = 4;
+  string songId = 4;
+  int32 uid = 5;
 }

@@ -29,45 +29,21 @@ export function isHost(role) {
 export function getMusicList(role) {
   return [
     {
-      songCode: "6625526605291650",
-      name: "十年",
-      singer: "陈奕迅",
+      songCode: "6625526603433040",
+      name: "遇见",
+      singer: "孙燕姿",
       select: false,
     },
     {
-      songCode: "6625526603528200",
-      name: "七里香",
-      singer: "周杰伦",
-      select: false,
-    },
-    {
-      songCode: "6654550269701680",
-      name: "告白气球",
-      singer: "周杰伦",
-      select: false,
-    },
-    {
-      songCode: "6625526603296890",
-      name: "晴天",
-      singer: "周杰伦",
-      select: false,
-    },
-    {
-      songCode: "6625526603301530",
-      name: "成都",
-      singer: "赵雷",
-      select: false,
-    },
-    {
-      songCode: "6625526603287770",
-      name: "纸短情长",
-      singer: "花粥",
+      songCode: "6654550239297550",
+      name: "反转地球",
+      singer: "潘玮柏",
       select: false,
     },
   ];
 }
 
-export const PREFIX = "/chorus/"
+export const PREFIX = "/vocal-solo/"
 
 
 export const APP_INFO = [
@@ -138,10 +114,6 @@ export async function setupSenderTransform(transceiver) {
 
   streams.readable.pipeThrough(transformer).pipeTo(streams.writable);
 }
-
-
-// const textDecoder = new TextDecoder();
-// const textEncoder = new TextEncoder();
 
 
 export const encodeAudioMetadata = (data = {}) => {

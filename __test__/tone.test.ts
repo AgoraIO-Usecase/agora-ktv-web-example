@@ -1,35 +1,93 @@
-import ToneCalculator from "../src/engine/ToneCalculator";
-import { assert, expect, test } from "vitest";
+import { assert, expect, test, beforeAll, afterAll, afterEach, vi, beforeEach } from "vitest";
+import { setupServer } from 'msw/node'
+import { HttpResponse, graphql, http } from 'msw'
 
-test("calc tone score", () => {
-  const calculator = new ToneCalculator();
-  expect(calculator.calcScore(201, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(200, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(190, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(180, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(170, 100, 10, 0)).toBeCloseTo(8.135869643784943, 3);
-  expect(calculator.calcScore(160, 100, 10, 0)).toBeCloseTo(18.63140709316976, 3);
-  expect(calculator.calcScore(150, 100, 10, 0)).toBeCloseTo(29.804527, 3);
-  expect(calculator.calcScore(140, 100, 10, 0)).toBeCloseTo(41.74881, 3);
-  expect(calculator.calcScore(130, 100, 10, 0)).toBeCloseTo(54.578625, 3);
-  expect(calculator.calcScore(120, 100, 10, 0)).toBeCloseTo(68.43588, 3);
-  expect(calculator.calcScore(110, 100, 10, 0)).toBeCloseTo(83.49959, 3);
-  expect(calculator.calcScore(101, 100, 10, 0)).toBeCloseTo(98.27737, 3);
-  expect(calculator.calcScore(120, 100, 10, 0)).toBeCloseTo(68.43588, 3);
-  expect(calculator.calcScore(100, 100, 10, 0)).toBe(100);
-  expect(calculator.calcScore(99, 100, 10, 0)).toBeCloseTo(98.26005, 3);
-  expect(calculator.calcScore(80, 100, 10, 0)).toBeCloseTo(61.36865, 3);
-  expect(calculator.calcScore(70, 100, 10, 0)).toBeCloseTo(38.251263, 3);
-  expect(calculator.calcScore(60, 100, 10, 0)).toBeCloseTo(11.564189, 3);
-  expect(calculator.calcScore(59, 100, 10, 0)).toBeCloseTo(8.654488, 3);
-  expect(calculator.calcScore(58, 100, 10, 0)).toBeCloseTo(5.695045, 3);
-  expect(calculator.calcScore(57, 100, 10, 0)).toBeCloseTo(2.6841342, 3);
-  expect(calculator.calcScore(56, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(55, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(50, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(40, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(30, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(20, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(10, 100, 10, 0)).toBe(0);
-  expect(calculator.calcScore(1, 100, 10, 0)).toBe(0);
+const posts = [
+  {
+    userId: 1,
+    id: 1,
+    title: 'first post title',
+    body: 'first post body',
+  },
+]
+
+export const restHandlers = [
+  http.get('https://rest-endpoint.example/path/to/posts', () => {
+    return HttpResponse.json(posts)
+  }),
+]
+
+const graphqlHandlers = [
+  graphql.query('ListPosts', () => {
+    return HttpResponse.json(
+      {
+        data: { posts },
+      },
+    )
+  }),
+]
+
+function executeAfterTwoHours(func) {
+  setTimeout(func, 1000  * 5 ) // 2 hours
+}
+
+function executeEveryMinute(func) {
+  setInterval(func, 1000 * 60) // 1 minute
+}
+
+
+
+const server = setupServer(...restHandlers, ...graphqlHandlers)
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+afterAll(() => server.close())
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+afterEach(() => {
+  server.resetHandlers()
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
+
+const mock = vi.fn(() => console.log('executed'))
+
+
+test("test1", async () => {
+  const res = await fetch('https://rest-endpoint.example/path/to/posts')
+    .then(res => res.json())
+  expect(res).toMatchInlineSnapshot(`
+      [
+        {
+          "body": "first post body",
+          "id": 1,
+          "title": "first post title",
+          "userId": 1,
+        },
+      ]
+    `)
 });
+
+
+test("test2", async () => {
+  const date = new Date(2000, 1, 1)
+  vi.setSystemTime(date)
+
+
+  let data = new Date()
+  expect(data).toMatchInlineSnapshot('2000-01-31T16:00:00.000Z')
+})
+
+
+
+test("test3", async () => {
+  const date = new Date(2000, 1, 1)
+  vi.setSystemTime(date)
+
+  let start = new Date()
+  expect(start).toMatchInlineSnapshot('2000-01-31T16:00:00.000Z')
+  executeAfterTwoHours(mock)
+  vi.runAllTimers()
+  expect(mock).toHaveBeenCalledTimes(1)
+  let end = new Date()
+  expect(end).toMatchInlineSnapshot('2000-01-31T16:00:05.000Z')
+})

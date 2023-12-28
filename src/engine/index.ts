@@ -83,6 +83,8 @@ export default class Engine {
   }
 
   // ------------------  public  ------------------
+  
+  // 设置时间戳 (s)
   setTime(time: number) {
     this.currentTime = time;
     this._dealTime();
@@ -382,23 +384,23 @@ export default class Engine {
 
   // 处理时间
   private _dealTime() {
-    if (this.currentTime && this._timer++ % 50 == 0) {
-      let score = 0;
-      if (this.lineIndex >= 0) {
-        if (this.lyric?.lines) {
-          score = this.lyric?.lines[this.lineIndex]?.score || 0;
-        } else {
-          score = 0;
-        }
+    // if (this.currentTime && this._timer++ % 50 == 0) {
+    let score = 0;
+    if (this.lineIndex >= 0) {
+      if (this.lyric?.lines) {
+        score = this.lyric?.lines[this.lineIndex]?.score || 0;
+      } else {
+        score = 0;
       }
-      // 1000ms 抛出一次事件
-      this._emitter.emit("timeUpdate", {
-        progress: this.currentTime,
-        lineIndex: this.lineIndex,
-        cumulativeScore: this.cumulativeScore,
-        score: score,
-      });
     }
+    // 1000ms 抛出一次事件
+    this._emitter.emit("timeUpdate", {
+      progress: this.currentTime,
+      lineIndex: this.lineIndex,
+      cumulativeScore: this.cumulativeScore,
+      score: score,
+    });
+    // }
   }
 
 

@@ -30,7 +30,8 @@ export const LrcTime = $root.LrcTime = (() => {
      * @property {MsgType|null} [type] LrcTime type
      * @property {boolean|null} [forward] LrcTime forward
      * @property {number|Long|null} [ts] LrcTime ts
-     * @property {number|null} [songId] LrcTime songId
+     * @property {string|null} [songId] LrcTime songId
+     * @property {number|null} [uid] LrcTime uid
      */
 
     /**
@@ -74,11 +75,19 @@ export const LrcTime = $root.LrcTime = (() => {
 
     /**
      * LrcTime songId.
-     * @member {number} songId
+     * @member {string} songId
      * @memberof LrcTime
      * @instance
      */
-    LrcTime.prototype.songId = 0;
+    LrcTime.prototype.songId = "";
+
+    /**
+     * LrcTime uid.
+     * @member {number} uid
+     * @memberof LrcTime
+     * @instance
+     */
+    LrcTime.prototype.uid = 0;
 
     /**
      * Creates a new LrcTime instance using the specified properties.
@@ -111,7 +120,9 @@ export const LrcTime = $root.LrcTime = (() => {
         if (message.ts != null && Object.hasOwnProperty.call(message, "ts"))
             writer.uint32(/* id 3, wireType 0 =*/24).int64(message.ts);
         if (message.songId != null && Object.hasOwnProperty.call(message, "songId"))
-            writer.uint32(/* id 4, wireType 0 =*/32).int32(message.songId);
+            writer.uint32(/* id 4, wireType 2 =*/34).string(message.songId);
+        if (message.uid != null && Object.hasOwnProperty.call(message, "uid"))
+            writer.uint32(/* id 5, wireType 0 =*/40).int32(message.uid);
         return writer;
     };
 
@@ -159,7 +170,11 @@ export const LrcTime = $root.LrcTime = (() => {
                     break;
                 }
             case 4: {
-                    message.songId = reader.int32();
+                    message.songId = reader.string();
+                    break;
+                }
+            case 5: {
+                    message.uid = reader.int32();
                     break;
                 }
             default:
@@ -226,7 +241,9 @@ export const LrcTime = $root.LrcTime = (() => {
             else if (typeof object.ts === "object")
                 message.ts = new $util.LongBits(object.ts.low >>> 0, object.ts.high >>> 0).toNumber();
         if (object.songId != null)
-            message.songId = object.songId | 0;
+            message.songId = String(object.songId);
+        if (object.uid != null)
+            message.uid = object.uid | 0;
         return message;
     };
 
@@ -251,7 +268,8 @@ export const LrcTime = $root.LrcTime = (() => {
                 object.ts = options.longs === String ? long.toString() : options.longs === Number ? long.toNumber() : long;
             } else
                 object.ts = options.longs === String ? "0" : 0;
-            object.songId = 0;
+            object.songId = "";
+            object.uid = 0;
         }
         if (message.type != null && message.hasOwnProperty("type"))
             object.type = options.enums === String ? $root.MsgType[message.type] === undefined ? message.type : $root.MsgType[message.type] : message.type;
@@ -264,6 +282,8 @@ export const LrcTime = $root.LrcTime = (() => {
                 object.ts = options.longs === String ? $util.Long.prototype.toString.call(message.ts) : options.longs === Number ? new $util.LongBits(message.ts.low >>> 0, message.ts.high >>> 0).toNumber() : message.ts;
         if (message.songId != null && message.hasOwnProperty("songId"))
             object.songId = message.songId;
+        if (message.uid != null && message.hasOwnProperty("uid"))
+            object.uid = message.uid;
         return object;
     };
 
