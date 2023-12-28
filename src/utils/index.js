@@ -1,3 +1,4 @@
+import { LrcTime } from "../proto/proto"
 const { VITE_AGORA_APP_ID } = import.meta.env || {}
 
 // string to Uint8Array
@@ -28,44 +29,19 @@ export function isHost(role) {
 export function getMusicList(role) {
   return [
     {
-      songCode: "6625526605291650",
-      name: "十年",
-      singer: "陈奕迅",
+      songCode: "6625526603433040",
+      name: "遇见",
+      singer: "孙燕姿",
       select: false,
     },
     {
-      songCode: "6625526603528200",
-      name: "七里香",
-      singer: "周杰伦",
-      select: false,
-    },
-    {
-      songCode: "6654550269701680",
-      name: "告白气球",
-      singer: "周杰伦",
-      select: false,
-    },
-    {
-      songCode: "6625526603296890",
-      name: "晴天",
-      singer: "周杰伦",
-      select: false,
-    },
-    {
-      songCode: "6625526603301530",
-      name: "成都",
-      singer: "赵雷",
-      select: false,
-    },
-    {
-      songCode: "6625526603287770",
-      name: "纸短情长",
-      singer: "花粥",
+      songCode: "6625526624816000",
+      name: "不如跳舞",
+      singer: "陈慧琳",
       select: false,
     },
   ];
 }
-
 export const PREFIX = "/chorus/"
 
 
@@ -79,8 +55,6 @@ export const APP_INFO = [
     type: "test"
   }
 ]
-
-
 
 
 // 生成延迟后的AudioBuffer
@@ -139,3 +113,90 @@ export async function setupSenderTransform(transceiver) {
 
   streams.readable.pipeThrough(transformer).pipeTo(streams.writable);
 }
+
+
+// const textDecoder = new TextDecoder();
+// const textEncoder = new TextEncoder();
+
+
+export const encodeAudioMetadata = (data = {}) => {
+  console.log("[encodeAudioMetadata] ", data)
+  const buffer = LrcTime.encode(data).finish()
+  return buffer
+}
+
+export const decodeAudioMetadata = (metadataBuffer) => {
+  const decodeData = LrcTime.decode(metadataBuffer)
+  console.log("[decodeAudioMetadata] ", decodeData)
+  return decodeData
+}
+
+
+
+export const encodeStreamMsg = (data) => {
+  console.log("stream-message send", data)
+  return stringToUint8Array(JSON.stringify(data))
+}
+
+export const decodeStreamMsg = (data) => {
+  return JSON.parse(Uint8ArrayToString(data))
+}
+
+
+export const encodeNTP = (data) => {
+  return data + (2208988800 * 1000)
+}
+
+
+export const decodeNTP = (data) => {
+  return data - (2208988800 * 1000)
+}
+
+
+// else if (this.role == 'audience') {
+//   // 观众
+//   // 使用 realPosition 
+//   if (realPosition <= 0) {
+//     return
+//   }
+//   if (!this.canPlay) {
+//     return
+//   }
+//   realPosition = realPosition > 0 ? realPosition : 0
+//   realPosition = realPosition - window.renderDelay
+//   if (realPosition < (this.currentTime * 1000 - 1000)) {
+//     console.log("[test] realPosition < 1000", this.currentTime, realPosition)
+//     return
+//   }
+//   if (preSysTime && preRealPosition) {
+//     let offsetTime = Math.abs(new Date().getTime() - preSysTime)
+//     let offsetRealPosition = Math.abs(realPosition - preRealPosition)
+//     if (Math.abs(offsetRealPosition - offsetTime) > 3000) {
+//       console.log("[test] △  > 3000")
+//       preSysTime = new Date().getTime()
+//       preRealPosition = realPosition
+//       return
+//     }
+//   }
+//   if (intervalId) {
+//     clearInterval(intervalId)
+//     intervalId = null
+//   }
+//   preSysTime = new Date().getTime()
+//   preRealPosition = realPosition
+//   const finPosition = realPosition / 1000
+//   // currentTime 只能增加不能减少
+//   this.currentTime = finPosition > this.currentTime ? finPosition : this.currentTime
+//   console.log("[test] this.currentTime1111", typeof this.currentTime, this.currentTime)
+//   engine.setTime(this.currentTime);
+//   intervalId = setInterval(() => {
+//     if (!this.canPlay) {
+//       clearInterval(intervalId)
+//       intervalId = null
+//       return
+//     }
+//     this.currentTime = Number((this.currentTime + 0.02).toFixed(2))
+//     engine.setTime(this.currentTime);
+//     console.log('[test] currentTime', typeof this.currentTime, this.currentTime)
+//   }, 20)
+// }

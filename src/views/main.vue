@@ -50,6 +50,7 @@ import { PitchDetectorExtension } from "../agora-extension-pitch-detector/index.
 import { apiGetSongDetail, apiGetLyric, apiBuildToken, apiStopConfluence, apiStartConfluence } from "../utils/request";
 import { getMusicList, PREFIX, stringToUint8Array, Uint8ArrayToString, genDelayAudioBuffer, setupSenderTransform } from "../utils/index";
 import { throttle } from "lodash-es"
+import { decodeAudioMetadata, encodeAudioMetadata, encodeStreamMsg, decodeStreamMsg, encodeNTP, decodeNTP } from "../utils/index"
 import imgPause from "../../img/pause.png"
 import imgPlay from "../../img/play.png"
 import AudioBufferManager from "../utils/manager"
@@ -59,11 +60,11 @@ let { MODE = "" } = import.meta.env;
 const assetsPath = MODE == "development" ? "/" : PREFIX;
 let appId = window?.appInfo?.appId
 let token = null
-let intervalId = null
 const engine = Engine.getInstance();
 const extension = new PitchDetectorExtension({ assetsPath });
 AgoraRTC.registerExtensions([extension]);
 let manager = null
+// let intervalId = null
 
 // just for test
 // engine.log.setLevel(0);
@@ -80,8 +81,8 @@ const DEFAULT_TEST_DATA = {
 }
 const ENMU_BGM_STATUS = {
   IDLE: 0,
-  PLAYING: 1,
-  PAUSE: 2
+  PLAYING: 3,
+  PAUSE: 4
 }
 let songIndex = 1;
 let intervalIds = []
@@ -93,12 +94,6 @@ const HOST_UID = 2
 let preSysTime = 0
 // 上一次真实时间
 let preRealPosition = 0
-
-
-const genMsg = (data) => {
-  console.log("stream-message send", data)
-  return stringToUint8Array(JSON.stringify(data))
-}
 
 
 const throttleSeek = throttle(function (number, fn) {
@@ -131,7 +126,6 @@ export default {
         audioTrack: null,
         videoTrack: null,
       },
-      uid: "",
       originalTrack: null, // 原声
       accompaniedTrack: null, // 伴奏
       accompaniedDelayTrack: null, // 伴奏延迟
@@ -164,7 +158,7 @@ export default {
       this.intervalCanOrder()
       this.handleHostRtcEvents()
       if (this.localTracks.audioTrack) {
-        this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
+        // this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
         await this.client1.publish(this.localTracks.audioTrack)
       }
       if (window.appInfo.type != 'test') {
@@ -183,7 +177,7 @@ export default {
       });
       await this.accompanimentJoinRtc()
       await this.handleAccompanimentRtcEvents()
-      this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
+      // this.localTracks.audioTrack.on("transceiver-updated", setupSenderTransform)
       await this.client1.publish(this.localTracks.audioTrack)
       if (window.appInfo.type != 'test') {
         this.startPitchExtension();
@@ -195,15 +189,12 @@ export default {
     } else {
       // 观众
       await this.audienceJoinRtc()
-      this.handleStreamMsg(this.audienceClient)
+      // this.handleStreamMsg(this.audienceClient)
       this.subscribeEngineEvents();
       this.handleAudienceRtcEvents()
     }
   },
   mounted() {
-    // window.addEventListener("unbeforeunload", (e) => {
-    //   debugger
-    // })
     window.addEventListener('beforeunload', async (e) => {
       if (this.role == 'host' && this.chorused) {
         await this.endChorus()
@@ -228,10 +219,10 @@ export default {
     intervalIds.forEach(item => clearInterval(item))
     intervalIds = []
     await this.leaveRtc();
-    if (intervalId) {
-      clearInterval(intervalId)
-      intervalId = null
-    }
+    // if (intervalId) {
+    //   clearInterval(intervalId)
+    //   intervalId = null
+    // }
   },
   watch: {
     currentTime(val) {
@@ -254,7 +245,10 @@ export default {
       AgoraRTC.setParameter("ENABLE_NTP_REPORT", true)
       AgoraRTC.setParameter("NTP_DEFAULT_FIXED_OFFSET", window.ntpOffset);
       AgoraRTC.setParameter("TOPN_SMOOTH_LEVEL", window.TOPN_SMOOTH_LEVEL);
+      // AUDIO_METADATA
       AgoraRTC.setParameter("ENABLE_ENCODED_TRANSFORM", !!window.ENABLE_ENCODED_TRANSFORM);
+      AgoraRTC.setParameter("ENABLE_AUDIO_METADATA", true);
+      // AUDIO_METADATA
       AgoraRTC.setParameter("ENABLE_AUDIO_TOPN", !!window.ENABLE_AUDIO_TOPN);
       AgoraRTC.setParameter("TOPN_NEW_SPEAKER_DELAY", window.TOPN_NEW_SPEAKER_DELAY);
       window.TOPN_SWITCH_HOLD_MS && AgoraRTC.setParameter("TOPN_SWITCH_HOLD_MS", window.TOPN_SWITCH_HOLD_MS);
@@ -387,18 +381,34 @@ export default {
           user.audioTrack.stop();
         }
       })
+      this.audienceClient.on("audio-metadata", async (metadata) => {
+        const res = decodeAudioMetadata(metadata);
+        const { ts, songId } = res
+        if (songId && songId != this.nowMusic.songCode) {
+          this.nowMusic.songCode = songId
+          await this.getSongDetail(songId);
+        }
+        this.currentTime = (ts - window.renderDelay) / 1000
+        engine.setTime(this.currentTime);
+      });
     },
     startConfluenceStreamMessage() {
       let id = setInterval(() => {
         if (this.chorused) {
+          let finalStatus = 0
+          if (this.status == ENMU_BGM_STATUS.PLAYING) {
+            finalStatus = 1
+          } else if (this.status == ENMU_BGM_STATUS.PAUSE) {
+            finalStatus = 2
+          }
           this.client1.sendStreamMessage({
-            payload: genMsg({
+            payload: encodeStreamMsg({
               service: "audio_smart_mixer_status",
               version: "V1",  // 协议版本号
               payload: {
-                Ts: this.client1.getNtpWallTimeInMs(), // NTP 时间
+                Ts: encodeNTP(this.client1.getNtpWallTimeInMs()), // NTP 时间
                 cname: this.channel, // 频道名
-                status: this.status, // （-1： unknown，0：非K歌状态，1：K歌播放状态，2：K歌暂停状态）
+                status: finalStatus, // （-1： unknown，0：非K歌状态，1：K歌播放状态，2：K歌暂停状态）
                 bgmUID: BGM_PUBLISH_UID + "", // BGM 流 UID
                 leadsingerUID: this.uid + ""// 主唱Uid
               },
@@ -413,7 +423,7 @@ export default {
       let id = setInterval(() => {
         if (this.status !== ENMU_BGM_STATUS.IDLE && this.status !== ENMU_BGM_STATUS.PAUSE) {
           this.client1.sendStreamMessage({
-            payload: genMsg({
+            payload: encodeStreamMsg({
               service: "audio_smart_mixer",
               version: "V1", // 协议版本号
               payload: {
@@ -464,18 +474,18 @@ export default {
       this.status = ENMU_BGM_STATUS.PLAYING
       this.accompaniedTrack?.play();
       this.accompaniedTrack?.startProcessAudioBuffer();
-      console.log("this.accompaniedTrack", this.accompaniedTrack)
       if (this.role == 'host') {
         this?.accompaniedDelayTrack?.startProcessAudioBuffer()
         await this.client2?.publish(this?.accompaniedDelayTrack);
         this.client1.sendStreamMessage({
-          payload: genMsg({
-            type: 4,
-            ntp: this.client1.getNtpWallTimeInMs(),
-            songCode: this.nowMusic.songCode,
-            status: this.status,
-            position: 0,
-            realPosition: 0,
+          payload: encodeStreamMsg({
+            cmd: "setLrcTime",
+            ntp: encodeNTP(this.client1.getNtpWallTimeInMs()),
+            songIdentifier: this.nowMusic.songCode,
+            playerState: this.status,
+            time: 0,
+            realTime: 0,
+            duration: Math.floor(this.accompaniedTrack?.duration * 1000),
             forward: true
           }),
           syncWithAudio: true
@@ -489,9 +499,8 @@ export default {
         return
       }
       var audioContext = new AudioContext();
-      const res = await fetch(this.nowMusic.accompanyUrl)
-      // const res = await fetch(this.nowMusic.playUrl)
-
+      // const res = await fetch(this.nowMusic.accompanyUrl)
+      const res = await fetch(this.nowMusic.playUrl)
       // manager = new AudioBufferManager(this.nowMusic.playUrl)
       // await manager.deal()
       // manager.play()
@@ -571,23 +580,44 @@ export default {
         }
       });
       engine.on("timeUpdate", (data) => {
+        if (this.role == "audience") {
+          return
+        }
         const { progress } = data
         if (this.joinedRtc && this.role == 'host' && this.status != ENMU_BGM_STATUS.PAUSE) {
+          let time = parseInt(progress * 1000 - window.audioDeviceDelay)
+          let realTime = parseInt(progress * 1000) - window.publishDelay
+          let songCode = this.nowMusic.songCode
           this.client1.sendStreamMessage({
-            payload: genMsg({
-              type: 4,
-              ntp: this.client1.getNtpWallTimeInMs(),
-              songCode: this.nowMusic.songCode,
-              status: this.status,
-              position: parseInt(progress * 1000 - window.audioDeviceDelay),
-              realPosition: parseInt(progress * 1000) - window.publishDelay,
+            payload: encodeStreamMsg({
+              cmd: "setLrcTime",
+              ntp: encodeNTP(this.client1.getNtpWallTimeInMs()),
+              songIdentifier: songCode,
+              playerState: this.status,
+              time: time,
+              realTime: realTime,
+              duration: Math.floor(this.accompaniedTrack?.duration * 1000),
               forward: true,
             }),
             syncWithAudio: true,
           });
+          if (this.role == 'host') {
+            const metadata = encodeAudioMetadata({
+              cmd: "setLrcTime",
+              type: 1001,
+              ts: realTime,
+              songId: songCode,
+              forward: true,
+              uid: BGM_PUBLISH_UID,
+            });
+            this.client2.sendAudioMetadata({
+              value: metadata
+            })
+          }
         }
       });
       engine.on("lineEnd", async (data) => {
+        console.log("lineEnd", data)
         const { line, score, combo } = data;
         this.currentLine = line;
         this.vocalScore = score
@@ -607,13 +637,14 @@ export default {
           preSysTime = 0
           if (this.role == 'host') {
             this.client1.sendStreamMessage({
-              payload: genMsg({
-                type: 4,
-                ntp: this.client1.getNtpWallTimeInMs(),
-                songCode: this.nowMusic.songCode,
-                status: this.status,
-                position: -1,
-                realPosition: -1,
+              payload: encodeStreamMsg({
+                cmd: "setLrcTime",
+                ntp: encodeNTP(this.client1.getNtpWallTimeInMs()),
+                songIdentifier: this.nowMusic.songCode,
+                playerState: this.status,
+                time: -1,
+                realTime: -1,
+                duration: Math.floor(this.accompaniedTrack?.duration * 1000),
                 forward: true,
               }),
               syncWithAudio: true,
@@ -675,16 +706,6 @@ export default {
           i.select = true;
         }
       });
-      this.client1.sendStreamMessage({
-        payload: genMsg({
-          type: EnumMessage.order,
-          songCode: Number(songCode),
-          songIndex: songIndex,
-          forward: true,
-
-        }),
-        syncWithAudio: true,
-      });
       songIndex++;
       this.reset()
       await this.getSongDetail(songCode);
@@ -715,18 +736,21 @@ export default {
       this.accompaniedTrack?.pauseProcessAudioBuffer();
       this.accompaniedDelayTrack?.pauseProcessAudioBuffer();
       if (this.role == 'host') {
+        const songCode = this.nowMusic.songCode
         this.client1.sendStreamMessage({
-          payload: genMsg({
-            type: 4,
-            ntp: this.client1.getNtpWallTimeInMs(),
-            songCode: this.nowMusic.songCode,
-            status: this.status,
-            position: -1,
-            realPosition: -1,
+          payload: encodeStreamMsg({
+            cmd: "setLrcTime",
+            ntp: encodeNTP(this.client1.getNtpWallTimeInMs()),
+            songIdentifier: songCode,
+            playerState: this.status,
+            time: -1,
+            realTime: -1,
+            duration: Math.floor(this.accompaniedTrack?.duration * 1000),
             forward: true,
           }),
           syncWithAudio: true,
         })
+
       }
     },
     // 继续播放
@@ -765,95 +789,51 @@ export default {
     // 处理stream msg (伴唱/观众)
     handleStreamMsg(client) {
       client.on("stream-message", async (uid, data) => {
-        data = JSON.parse(Uint8ArrayToString(data))
-        let { type, songCode, status, position = 0, realPosition = 0, ntp } = data
-        if (!type) {
+        data = decodeStreamMsg(data)
+        let { cmd, playerState, time = 0, realTime = 0, ntp = 0, songIdentifier } = data
+        ntp = decodeNTP(ntp)
+        if (!cmd) {
           return
         }
         console.log("stream-message received", data)
-        switch (type) {
-          case 3:
-            // 点歌
-            this.reset()
-            this.getSongDetail(songCode)
-            break
-          case 4:
-            // 状态同步
+        switch (cmd) {
+          case "setLrcTime":
             if (this.role == 'accompaniment') {
               // 伴唱
-              if (!this.canPlay) {
-                this.currentTime = position / 1000
+              if (songIdentifier && songIdentifier !== this.nowMusic.songCode) {
+                this.nowMusic.songCode = songIdentifier
+                // 点歌
+                this.reset()
+                await this.getSongDetail(songIdentifier)
                 return
               }
-              if (this.status == ENMU_BGM_STATUS.IDLE && position > 0) {
-                this.currentTime = position / 1000
+              if (!this.canPlay) {
+                this.currentTime = time / 1000
+                return
+              }
+              if (this.status == ENMU_BGM_STATUS.IDLE && time > 0) {
+                this.currentTime = time / 1000
                 await this.playBgm()
                 return
               }
               let localPosition = this.accompaniedTrack?.getCurrentTime() * 1000
               const localNtpTime = this.client1?.getNtpWallTimeInMs() || this.audienceClient?.getNtpWallTimeInMs()
               const remoteNtpTime = ntp
-              const remotePosition = position
+              const remotePosition = time
               let exportPosition = localNtpTime - remoteNtpTime + remotePosition + window.audioDeviceDelay
               if (Math.abs(exportPosition - localPosition) > 40) {
                 this.currentTime = exportPosition / 1000
                 throttleSeek(this.currentTime, this.seekBGMProgress.bind(this))
               }
-              if (this.status !== status) {
-                if (status == ENMU_BGM_STATUS.PLAYING) {
+              if (this.status !== playerState) {
+                if (playerState == ENMU_BGM_STATUS.PLAYING) {
                   // 需要播放
                   this.continuePlay()
-                } else if (status == ENMU_BGM_STATUS.PAUSE) {
+                } else if (playerState == ENMU_BGM_STATUS.PAUSE) {
                   // 需要暂停
                   this.stopPlay()
                 }
               }
-            } else if (this.role == 'audience') {
-              // 观众
-              // 使用 realPosition 
-              if (realPosition <= 0) {
-                return
-              }
-              if (!this.canPlay) {
-                return
-              }
-              realPosition = realPosition > 0 ? realPosition : 0
-              realPosition = realPosition - window.renderDelay
-              if (realPosition < (this.currentTime * 1000 - 1000)) {
-                console.log("[test] realPosition < 1000", this.currentTime, realPosition)
-                return
-              }
-              if (preSysTime && preRealPosition) {
-                let offsetTime = Math.abs(new Date().getTime() - preSysTime)
-                let offsetRealPosition = Math.abs(realPosition - preRealPosition)
-                if (Math.abs(offsetRealPosition - offsetTime) > 3000) {
-                  console.log("[test] △  > 3000")
-                  preSysTime = new Date().getTime()
-                  preRealPosition = realPosition
-                  return
-                }
-              }
-              if (intervalId) {
-                clearInterval(intervalId)
-                intervalId = null
-              }
-              preSysTime = new Date().getTime()
-              preRealPosition = realPosition
-              const finPosition = realPosition / 1000
-              // currentTime 只能增加不能减少
-              this.currentTime = finPosition > this.currentTime ? finPosition : this.currentTime
-              console.log("[test] this.currentTime1111", typeof this.currentTime, this.currentTime)
-              engine.setTime(this.currentTime);
-              intervalId = setInterval(() => {
-                if (!this.canPlay) {
-                  clearInterval(intervalId)
-                  intervalId = null
-                  return
-                }
-                this.currentTime = Number((this.currentTime + 0.02).toFixed(2))
-                engine.setTime(this.currentTime);
-                console.log('[test] currentTime', typeof this.currentTime, this.currentTime)
-              }, 20)
             }
             break
         }
@@ -892,16 +872,6 @@ export default {
       this.testData = DEFAULT_TEST_DATA
       preRealPosition = 0
       preSysTime = 0
-    },
-    setupSenderTransform(transceiver) {
-      const isChrome =
-        navigator.userAgent.indexOf("Firefox") === -1 &&
-        navigator.userAgent.indexOf("Chrome") > -1;
-
-      if (!transceiver || !isChrome || !window.ENABLE_ENCODED_TRANSFORM) {
-        return;
-      }
-
     }
   }
 }

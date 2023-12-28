@@ -3,8 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
+    "build:proto": "pbjs -t static-module --no-verify -w es6 -o src/proto/proto.js src/proto/LrcTime.proto",
     "preview": "vite preview",
     "test": "vitest",
     "test:one": "vitest song.test.ts",
@@ -31,7 +32,8 @@
     "vue-template-compiler": "^2.7.8",
     "yorkie": "^2.0.0",
     "node-sass": "^8.0.0",
-    "vitest": "^0.29.7"
+    "vitest": "^0.29.7",
+    "protobufjs-cli":"^1.1.2"
   },
   "dependencies": {
     "axios": "0.24.0",
@@ -41,7 +43,8 @@
     "vue-router": "3.4.9",
     "x2js": "^3.4.4",
     "mitt": "^3.0.0",
-    "lodash-es": "^4.17.21"
+    "lodash-es": "^4.17.21",
+    "protobufjs":"^7.2.5"
   },
   "browserslist": {
     "production": [

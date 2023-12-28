@@ -382,23 +382,21 @@ export default class Engine {
 
   // 处理时间
   private _dealTime() {
-    if (this.currentTime && this._timer++ % 50 == 0) {
-      let score = 0;
-      if (this.lineIndex >= 0) {
-        if (this.lyric?.lines) {
-          score = this.lyric?.lines[this.lineIndex]?.score || 0;
-        } else {
-          score = 0;
-        }
+    let score = 0;
+    if (this.lineIndex >= 0) {
+      if (this.lyric?.lines) {
+        score = this.lyric?.lines[this.lineIndex]?.score || 0;
+      } else {
+        score = 0;
       }
-      // 100ms 抛出一次事件
-      this._emitter.emit("timeUpdate", {
-        progress: this.currentTime,
-        lineIndex: this.lineIndex,
-        cumulativeScore: this.cumulativeScore,
-        score: score,
-      });
     }
+    // 抛出事件频率和 setTime 调用一致
+    this._emitter.emit("timeUpdate", {
+      progress: this.currentTime,
+      lineIndex: this.lineIndex,
+      cumulativeScore: this.cumulativeScore,
+      score: score,
+    });
   }
 
 

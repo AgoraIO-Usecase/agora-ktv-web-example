@@ -103,6 +103,12 @@ export async function apiStartConfluence(channel) {
                     "dataStream": true,
                   },
                   "sink": {}
+                },
+                "metaDataOption": {
+                  "source": {
+                    "audioMetaData": true,
+                  },
+                  "sink": {}
                 }
               }]
             }
