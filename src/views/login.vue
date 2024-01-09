@@ -77,7 +77,7 @@ export default {
       ntpOffset: 80,
       audioDeviceDelay: -190,
       publishDelay: 110,
-      renderDelay: 0,
+      renderDelay: 200,
       topN: 3,
       TOPN_SMOOTH_LEVEL: 1,
       TOPN_NEW_SPEAKER_DELAY: 300,

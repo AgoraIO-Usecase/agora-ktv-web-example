@@ -35,9 +35,9 @@ export function getMusicList(role) {
       select: false,
     },
     {
-      songCode: "6654550239297550",
-      name: "反转地球",
-      singer: "潘玮柏",
+      songCode: "6625526624816000",
+      name: "不如跳舞",
+      singer: "陈慧琳",
       select: false,
     },
   ];

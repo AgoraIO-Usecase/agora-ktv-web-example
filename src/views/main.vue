@@ -12,11 +12,11 @@
       </div>
       <IncentiveView ref="incentiveViewRef"></IncentiveView>
       <LyricsView :lyric="lyric" :currentTime="currentTime" :currentLine="currentLine">
-        <!-- <section class="buttonList" v-if="role == 'host'">
+        <section class="buttonList" v-if="role == 'host'">
           <div>
             <img class="img" :src="toggleImgSrc" alt="" @click="togglePlay" />
           </div>
-        </section> -->
+        </section>
       </LyricsView>
     </div>
     <VoiceSet :volume="volume" @updateVolume="updateVolume"></VoiceSet>
@@ -331,7 +331,7 @@ export default {
           this.nowMusic.songCode = songId
           await this.getSongDetail(songId);
         }
-        this.currentTime = ts / 1000
+        this.currentTime = (ts - window.renderDelay) / 1000
         engine.setTime(this.currentTime);
       });
     },
@@ -355,7 +355,9 @@ export default {
     },
     startLyricTimer() {
       const timer = setInterval(() => {
-        if (this.nowMusic.songCode && this.status !== ENMU_BGM_STATUS.IDLE) {
+        if (this.nowMusic.songCode &&
+          this.status !== ENMU_BGM_STATUS.IDLE &&
+          this.status !== ENMU_BGM_STATUS.PAUSE) {
           let time = this.accompaniedTrack?.getCurrentTime() || 0
           this.currentTime = time;
           engine.setTime(this.currentTime);
@@ -611,20 +613,7 @@ export default {
       this.status = ENMU_BGM_STATUS.PAUSE;
       this.accompaniedTrack?.pauseProcessAudioBuffer();
       this.accompaniedDelayTrack?.pauseProcessAudioBuffer();
-      if (this.role == 'host') {
-        // this.client1.sendStreamMessage({
-        //   payload: encodeStreamMsg({
-        //     type: 4,
-        //     ntp: this.client1.getNtpWallTimeInMs(),
-        //     songCode: this.nowMusic.songCode,
-        //     status: this.status,
-        //     position: -1,
-        //     realPosition: -1,
-        //     forward: true,
-        //   }),
-        //   syncWithAudio: true,
-        // })
-      }
+      // TODO: send msg 
     },
     // 继续播放
     continuePlay() {
